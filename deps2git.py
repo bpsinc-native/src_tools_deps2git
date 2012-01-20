@@ -68,7 +68,7 @@ def ConvertDepsToGit(deps, repos, deps_type, vars)
     # Get the Git hash based off the SVN rev.
     git_hash = ''
     if svn_rev != 'HEAD':
-      git_hash = '@%s' % svn_to_git.SvnRevToGitHash(svn_rev, git_url, repos,
+      git_hash = '@%s' % SvnRevToGitHash(svn_rev, git_url, repos,
           svn_to_git.GIT_HOST)
 
     # If this is webkit, we need to add the var for the hash.
