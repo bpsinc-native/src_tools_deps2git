@@ -31,6 +31,9 @@ def SvnUrlToGitUrl(path, svn_url):
   if svn_url == '/trunk/deps/page_cycler/acid3':
     return (path, GIT_HOST + 'chromium/deps/acid3.git')
 
+  if svn_url == '/trunk/deps/canvas_bench':
+    return (path, GIT_HOST + 'chromium/canvas_bench.git')
+
   if svn_url == '/trunk/deps/gpu/software_rendering_list':
     return (path, GIT_HOST + 'chromium/deps/gpu/software_rendering_list.git')
 
@@ -48,6 +51,9 @@ def SvnUrlToGitUrl(path, svn_url):
 
   if svn_url == '/trunk/deps/third_party/ffmpeg':
     return (path, GIT_HOST + 'chromium/third_party/ffmpeg.git')
+
+  if svn_url == 'http://webrtc.googlecode.com/svn/stable/src':
+    return (path, GIT_HOST + 'external/webrtc/stable/src.git')
 
   if svn_url in ('http://selenium.googlecode.com/svn/trunk/py/test',
                  '/trunk/deps/reference_builds/chrome'):
