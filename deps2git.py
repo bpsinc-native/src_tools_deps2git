@@ -43,7 +43,8 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, git_host):
   git_repo_path = os.path.join(repos_path, git_repo)
   if not os.path.exists(git_repo_path):
     git_tools.Clone(git_url, git_repo_path)
-  git_tools.Fetch(git_repo_path)
+  else:
+    git_tools.Fetch(git_repo_path)
   return git_tools.Search(git_repo_path, svn_rev)
 
 
