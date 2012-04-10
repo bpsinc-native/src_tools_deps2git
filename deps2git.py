@@ -102,10 +102,10 @@ def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars):
 
 def main():
   parser = optparse.OptionParser()
-  parser.add_option('-d', '--deps',
+  parser.add_option('-d', '--deps', default='DEPS',
                     help='path to the DEPS file to convert')
   parser.add_option('-o', '--out',
-                    help='path to the converted DEPS file')
+                    help='path to the converted DEPS file (default: stdout)')
   parser.add_option('-t', '--type', default='public',
                     help='type of DEPS file (public, etc)')
   parser.add_option('-r', '--repos',

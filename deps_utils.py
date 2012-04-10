@@ -6,6 +6,7 @@
 """Utilities for formatting and writing DEPS files."""
 
 import re
+import sys
 
 # Used by Varify() to automatically convert variable names tagged with this
 # prefix into Var('<variable name>').
@@ -115,5 +116,13 @@ def WriteDeps(deps_file_name, deps_vars, deps, deps_os, include_rules,
               'skip_child_includes = %s\n\n' % PrettyObj(skip_child_includes),
               'hooks = %s\n' % PrettyObj(hooks))
   new_deps = ''.join(new_deps)
-  deps_file = open(deps_file_name, 'w')
-  deps_file.write(new_deps)
+  if deps_file_name:
+    deps_file = open(deps_file_name, 'w')
+  else:
+    deps_file = sys.stdout
+
+  try:
+    deps_file.write(new_deps)
+  finally:
+    if deps_file_name:
+      deps_file.close()
