@@ -33,7 +33,7 @@ def GetStatusOutput(cmd):
 
 
 def Git(git_repo, command):
-  """Execute a git command withing a git repo."""
+  """Execute a git command within a local git repo."""
   cmd = 'git --git-dir=%s %s' % (git_repo, command)
   (status, output) = GetStatusOutput(cmd)
   if status != 0:
@@ -50,6 +50,12 @@ def Clone(git_url, git_repo):
 def Fetch(git_repo):
   """Fetch the latest objects for a given git repository."""
   Git(git_repo, 'fetch')
+
+
+def Ping(git_repo):
+  """Confirm that a remote repository URL is valid."""
+  status, output = GetStatusOutput('git ls-remote ' + git_repo)
+  return status == 0
 
 
 def CreateLessThanOrEqualRegex(number):
