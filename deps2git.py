@@ -13,14 +13,14 @@ import deps_utils
 import git_tools
 
 
-def SplitSvnUrl(url):
-  """Given a SVN URL, return a set containing the URL and the revision."""
+def SplitScmUrl(url):
+  """Given a repository, return a set containing the URL and the revision."""
   url_split = url.split('@')
-  svn_url = url_split[0]
-  svn_rev = 'HEAD'
+  scm_url = url_split[0]
+  scm_rev = 'HEAD'
   if len(url_split) == 2:
-    svn_rev = url_split[1]
-  return (svn_url, svn_rev)
+    scm_rev = url_split[1]
+  return (scm_url, scm_rev)
 
 
 def SvnRevToGitHash(svn_rev, git_url, repos_path, git_host):
@@ -61,15 +61,19 @@ def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars, verify):
     deps_overrides.update(svn_to_git.DEPS_OVERRIDES)
 
   for dep in deps:
-    # Get the SVN URL and the SVN rev for this dep.
-    svn_url, svn_rev = SplitSvnUrl(deps[dep])
+    # Get the URL and the revision/hash for this dependency.
+    dep_url, dep_rev = SplitScmUrl(deps[dep])
 
-    # Convert this SVN URL to a Git URL.
-    path, git_url = svn_to_git.SvnUrlToGitUrl(dep, svn_url)
+    path = dep
+    git_url = dep_url
 
-    if not path or not git_url:
-      # We skip this path, this must not be required with Git.
-      continue
+    if not dep_url.endswith('.git'):
+      # Convert this SVN URL to a Git URL.
+      path, git_url = svn_to_git.SvnUrlToGitUrl(dep, dep_url)
+
+      if not path or not git_url:
+        # We skip this path, this must not be required with Git.
+        continue
 
     if verify:
       print >>sys.stderr, 'checking '  + git_url + '...',
@@ -81,7 +85,7 @@ def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars, verify):
 
     # Get the Git hash based off the SVN rev.
     git_hash = ''
-    if svn_rev != 'HEAD':
+    if dep_rev != 'HEAD':
       if dep in deps_overrides:
         # Transfer any required variables over from SVN DEPS.
         if not deps_overrides[dep] in svn_deps_vars:
@@ -92,8 +96,13 @@ def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars, verify):
         git_hash = '%s_%s' % (deps_utils.VARIFY_MARKER_TAG_PREFIX,
                               deps_overrides[dep])
       else:
-        git_hash = '@%s' % SvnRevToGitHash(svn_rev, git_url, repos,
-                                           svn_to_git.GIT_HOST)
+        # Pass-through the hash for Git repositories. Resolve the hash for
+        # subversion repositories.
+        if dep_url.endswith('.git'):
+          git_hash = '@%s' % dep_rev
+        else:
+          git_hash = '@%s' % SvnRevToGitHash(dep_rev, git_url, repos,
+                                             svn_to_git.GIT_HOST)
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit/Source':
