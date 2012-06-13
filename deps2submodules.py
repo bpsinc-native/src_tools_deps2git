@@ -19,7 +19,7 @@ def CollateDeps(deps_content):
   { submod_name : [ submod_os, submod_url, submod_sha1 ], ... }
   """
   fixdep = lambda x: x[4:] if x.startswith('src/') else x
-  spliturl = lambda x: x.split('@', 1)
+  spliturl = lambda x: list(x.partition('@')[0::2])
   submods = {}
   for (dep, url) in deps_content[0].iteritems():
     submods[fixdep(dep)] = ['all'] + spliturl(url)
@@ -41,6 +41,18 @@ def WriteGitmodules(submods):
     print >>fh, '\tpath = %s' % submod
     print >>fh, '\turl = %s' % submod_url
     print >>fh, '\tos = %s' % submod_os
+    if not submod_sha1:
+      # We don't know what sha1 to register, so we have to infer it from the
+      # submodule's origin/master.
+      if not os.path.exists(os.path.join(submod, '.git')):
+        # Not cloned yet
+        subprocess.check_call(['git', 'clone', '-n', submod_url, submod])
+      else:
+        # Already cloned; let's fetch
+        subprocess.check_call(['git', 'fetch', 'origin'], cwd=submod)
+      sub = subprocess.Popen(['git', 'rev-list', 'origin/HEAD^!'],
+                             cwd=submod, stdout=subprocess.PIPE)
+      submod_sha1 = sub.communicate()[0].rstrip()
     subprocess.check_call(['git', 'update-index', '--add',
                            '--cacheinfo', '160000', submod_sha1, submod])
   fh.close()
