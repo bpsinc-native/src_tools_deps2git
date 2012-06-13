@@ -58,17 +58,15 @@ def RemoveObsoleteSubmodules():
                                stdout=subprocess.PIPE)
   (grep_out, _) = grep_proc.communicate()
   lsfiles_proc.communicate()
-  for line in grep_out.splitlines():
-    [_, _, _, path] = line.split()
-    nullpipe = open(os.devnull, 'w')
-    cmd = ['git', 'config', '-f', '.gitmodules',
-           '--get-regexp', 'submodule\..*\.path', path]
-    try:
-      subprocess.check_call(cmd, stdout=nullpipe)
-    except subprocess.CalledProcessError:
-      subprocess.check_call(['git', 'update-index', '--force-remove', path])
-    finally:
-      nullpipe.close()
+  with open(os.devnull, 'w') as nullpipe:
+    for line in grep_out.splitlines():
+      [_, _, _, path] = line.split()
+      cmd = ['git', 'config', '-f', '.gitmodules',
+             '--get-regexp', 'submodule\..*\.path', path]
+      try:
+        subprocess.check_call(cmd, stdout=nullpipe)
+      except subprocess.CalledProcessError:
+        subprocess.check_call(['git', 'update-index', '--force-remove', path])
 
 
 def main():
