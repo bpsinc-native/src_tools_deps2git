@@ -61,6 +61,10 @@ def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars, verify):
     deps_overrides.update(svn_to_git.DEPS_OVERRIDES)
 
   for dep in deps:
+    if not deps[dep]:  # dep is 'None' and emitted to exclude the dep
+      new_deps[dep] = None
+      continue
+
     # Get the URL and the revision/hash for this dependency.
     dep_url, dep_rev = SplitScmUrl(deps[dep])
 

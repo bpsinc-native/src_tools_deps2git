@@ -65,7 +65,10 @@ def PrettyDeps(deps, indent=0):
       value = PrettyDeps(deps[item], indent)
     else:
       value = ' ' * (indent + 4)
-      value += '\'%s\'' % str(deps[item])
+      if deps[item] is None:
+        value += str(deps[item])
+      else:
+        value += '\'%s\'' % str(deps[item])
     pretty += ' ' * indent
     pretty += '\'%s\':\n' % item
     pretty += '%s,\n' % value
