@@ -19,7 +19,7 @@ def CollateDeps(deps_content):
   { submod_name : [ submod_os, submod_url, submod_sha1 ], ... }
   """
   fixdep = lambda x: x[4:] if x.startswith('src/') else x
-  spliturl = lambda x: list(x.partition('@')[0::2])
+  spliturl = lambda x: list(x.partition('@')[0::2]) if x else [None, None]
   submods = {}
   for (dep, url) in deps_content[0].iteritems():
     submods[fixdep(dep)] = ['all'] + spliturl(url)
@@ -37,6 +37,8 @@ def WriteGitmodules(submods):
   fh = open('.gitmodules', 'w')
   for submod in sorted(submods.keys()):
     [submod_os, submod_url, submod_sha1] = submods[submod]
+    if not submod_url:
+      continue
     print >>fh, '[submodule "%s"]' % submod
     print >>fh, '\tpath = %s' % submod
     print >>fh, '\turl = %s' % submod_url
