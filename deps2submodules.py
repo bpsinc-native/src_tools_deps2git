@@ -16,16 +16,19 @@ def CollateDeps(deps_content):
   """
   Take the output of deps_utils.GetDepsContent and return a hash of:
 
-  { submod_name : [ submod_os, submod_url, submod_sha1 ], ... }
+  { submod_name : [ [ submod_os, ... ], submod_url, submod_sha1 ], ... }
   """
   fixdep = lambda x: x[4:] if x.startswith('src/') else x
   spliturl = lambda x: list(x.partition('@')[0::2]) if x else [None, None]
   submods = {}
-  for (dep, url) in deps_content[0].iteritems():
-    submods[fixdep(dep)] = ['all'] + spliturl(url)
+  # Non-OS-specific DEPS always override OS-specific deps. This is an interim
+  # hack until there is a better way to handle OS-specific DEPS.
   for (deps_os, val) in deps_content[1].iteritems():
     for (dep, url) in val.iteritems():
-      submods[fixdep(dep)] = [deps_os] + spliturl(url)
+      submod_data = submods.setdefault(fixdep(dep), [[]] + spliturl(url))
+      submod_data[0].append(deps_os)
+  for (dep, url) in deps_content[0].iteritems():
+    submods[fixdep(dep)] = [['all']] + spliturl(url)
   return submods
 
 
@@ -37,12 +40,12 @@ def WriteGitmodules(submods):
   fh = open('.gitmodules', 'w')
   for submod in sorted(submods.keys()):
     [submod_os, submod_url, submod_sha1] = submods[submod]
+    print >>fh, '[submodule "%s"]' % submod 
+    print >>fh, '\tpath = %s' % submod
+    print >>fh, '\turl = %s' % (submod_url if submod_url else '')
+    print >>fh, '\tos = %s' % ','.join(submod_os)
     if not submod_url:
       continue
-    print >>fh, '[submodule "%s"]' % submod
-    print >>fh, '\tpath = %s' % submod
-    print >>fh, '\turl = %s' % submod_url
-    print >>fh, '\tos = %s' % submod_os
     if not submod_sha1:
       # We don't know what sha1 to register, so we have to infer it from the
       # submodule's origin/master.
