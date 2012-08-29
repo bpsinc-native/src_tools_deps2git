@@ -96,7 +96,18 @@ def SvnUrlToGitUrl(path, svn_url):
     return ('src/third_party/WebKit',
             GIT_HOST + 'external/WebKit_trimmed.git')
 
-  # Ignore all webkit directories, since we fetch the whole thing directly.
+  # Minimal header-only webkit directories for iOS.
+  if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
+                 'WebKit/chromium/public'):
+    return (path,
+            GIT_HOST + 'external/WebKit/Source/WebKit/chromium/public.git')
+  if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
+                 'Platform/chromium/public'):
+    return (path,
+            GIT_HOST + 'external/WebKit/Source/Platform/chromium/public.git')
+
+  # Ignore all webkit directories (other than the above), since we fetch the
+  # whole thing directly for all but iOS.
   if svn_url == '/trunk/deps/third_party/WebKit':
     return (None, None)
 
