@@ -12,6 +12,26 @@ import sys
 from deps_utils import GetDepsContent
 
 
+def SanitizeDeps(submods):
+  """
+  Look for conflicts (primarily nested submodules) in submodule data.  In the
+  case of a conflict, the higher-level (shallower) submodule takes precedence.
+  Modifies the submods argument in-place.
+  """
+  for submod_name in submods.keys():
+    parts = submod_name.split('/')[:-1]
+    while parts:
+      may_conflict = '/'.join(parts)
+      if may_conflict in submods:
+        msg = ('Warning: dropping submodule "%s", because '
+               'it is nested in submodule "%s".' % (submod_name, may_conflict))
+        print >>sys.stderr, msg
+        submods.pop(submod_name)
+        break
+      parts.pop()
+  return submods
+
+
 def CollateDeps(deps_content):
   """
   Take the output of deps_utils.GetDepsContent and return a hash of:
@@ -88,7 +108,7 @@ def RemoveObsoleteSubmodules():
 
 def main():
   deps_file = sys.argv[1] if len(sys.argv) > 1 else '.DEPS.git'
-  WriteGitmodules(CollateDeps(GetDepsContent(deps_file)))
+  WriteGitmodules(SanitizeDeps(CollateDeps(GetDepsContent(deps_file))))
   RemoveObsoleteSubmodules()
   return 0
 
