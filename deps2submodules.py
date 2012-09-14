@@ -5,11 +5,16 @@
 
 """Read .DEPS.git and use the information to update git submodules"""
 
+import optparse
 import os
+import re
 import subprocess
 import sys
 
 from deps_utils import GetDepsContent
+
+
+SHA1_RE = re.compile('[0-9a-fA-F]{40}')
 
 
 def SanitizeDeps(submods):
@@ -52,7 +57,7 @@ def CollateDeps(deps_content):
   return submods
 
 
-def WriteGitmodules(submods):
+def WriteGitmodules(submods, gitless=False):
   """
   Take the output of CollateDeps, use it to write a .gitmodules file and
   add submodules to the git index.
@@ -64,7 +69,10 @@ def WriteGitmodules(submods):
     print >>fh, '\tpath = %s' % submod
     print >>fh, '\turl = %s' % (submod_url if submod_url else '')
     print >>fh, '\tos = %s' % ','.join(submod_os)
-    if not submod_url:
+    if submod_sha1 and not SHA1_RE.match(submod_sha1):
+      raise RuntimeError('sha1 hash "%s" for submodule "%s" is malformed' %
+                         (submod_sha1, submod))
+    if gitless or not submod_url:
       continue
     if not submod_sha1:
       # We don't know what sha1 to register, so we have to infer it from the
@@ -107,9 +115,19 @@ def RemoveObsoleteSubmodules():
 
 
 def main():
-  deps_file = sys.argv[1] if len(sys.argv) > 1 else '.DEPS.git'
-  WriteGitmodules(SanitizeDeps(CollateDeps(GetDepsContent(deps_file))))
-  RemoveObsoleteSubmodules()
+  parser = optparse.OptionParser()
+  parser.add_option('--gitless', action='store_true',
+                    help='Skip all actions that assume a git working copy '
+                         '(to support presubmit checks)')
+  options, args = parser.parse_args()
+  if args:
+    deps_file = args[0]
+  else:
+    deps_file = '.DEPS.git'
+  WriteGitmodules(SanitizeDeps(CollateDeps(GetDepsContent(deps_file))),
+                  gitless=options.gitless)
+  if not options.gitless:
+    RemoveObsoleteSubmodules()
   return 0
 
 
