@@ -89,6 +89,8 @@ def WriteGitmodules(submods, gitless=False):
     subprocess.check_call(['git', 'update-index', '--add',
                            '--cacheinfo', '160000', submod_sha1, submod])
   fh.close()
+  if gitless:
+    return
   subprocess.check_call(['git', 'add', '.gitmodules'])
 
 
