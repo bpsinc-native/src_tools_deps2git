@@ -126,6 +126,12 @@ def main():
     deps_file = args[0]
   else:
     deps_file = '.DEPS.git'
+
+  # 9/18/2012 -- HACK to fix try bots without restarting
+  hack_deps_file = os.path.join('src', '.DEPS.git')
+  if not os.path.exists(deps_file) and os.path.exists(hack_deps_file):
+    deps_file = hack_deps_file
+        
   WriteGitmodules(SanitizeDeps(CollateDeps(GetDepsContent(deps_file))),
                   gitless=options.gitless)
   if not options.gitless:
