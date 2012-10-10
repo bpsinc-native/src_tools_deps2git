@@ -23,28 +23,35 @@ def SplitScmUrl(url):
   return (scm_url, scm_rev)
 
 
-def SvnRevToGitHash(svn_rev, git_url, repos_path, git_host):
+def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
+                    git_host):
   """Convert a SVN revision to a Git commit id."""
   git_repo = None
   if git_url.startswith(git_host):
     git_repo = git_url.replace(git_host, '')
   else:
     raise Exception('Unknown git server')
-  if repos_path is None:
+  if repos_path is None and workspace is None:
     # We're running without a repository directory (i.e. no -r option).
     # We cannot actually find the commit id, but this mode is useful
     # just for testing the URL mappings.  Produce an output file that
     # can't actually be used, but can be eyeballed for correct URLs.
     return 'xxx-r%s' % svn_rev
-  git_repo_path = os.path.join(repos_path, git_repo)
-  if not os.path.exists(git_repo_path):
-    git_tools.Clone(git_url, git_repo_path)
+  if repos_path:
+    git_repo_path = os.path.join(repos_path, git_repo)
+    mirror = True
   else:
-    git_tools.Fetch(git_repo_path)
-  return git_tools.Search(git_repo_path, svn_rev)
+    git_repo_path = os.path.join(workspace, dep_path)
+    mirror = False
+  if not os.path.exists(git_repo_path):
+    git_tools.Clone(git_url, git_repo_path, mirror)
+  else:
+    git_tools.Fetch(git_repo_path, mirror)
+  return git_tools.Search(git_repo_path, svn_rev, mirror)
 
 
-def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars, verify):
+def ConvertDepsToGit(deps, repos, workspace, deps_type, deps_vars,
+                     svn_deps_vars, verify):
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
   new_deps = {}
   bad_git_urls = set([])
@@ -105,8 +112,8 @@ def ConvertDepsToGit(deps, repos, deps_type, deps_vars, svn_deps_vars, verify):
         if dep_url.endswith('.git'):
           git_hash = '@%s' % dep_rev
         else:
-          git_hash = '@%s' % SvnRevToGitHash(dep_rev, git_url, repos,
-                                             svn_to_git.GIT_HOST)
+          git_hash = '@%s' % SvnRevToGitHash(dep_rev, git_url, repos, workspace,
+                                             path, svn_to_git.GIT_HOST)
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit/Source':
@@ -129,6 +136,8 @@ def main():
                     help='type of DEPS file (public, etc)')
   parser.add_option('-r', '--repos',
                     help='path to the directory holding all the Git repos')
+  parser.add_option('-w', '--workspace', metavar='PATH',
+                    help='top level of a git-based gclient checkout')
   parser.add_option('--verify', action='store_true',
                     help='ping each Git repo to make sure it exists')
   options = parser.parse_args()[0]
@@ -147,12 +156,14 @@ def main():
   }
 
   # Convert the DEPS file to Git.
-  deps, baddeps = ConvertDepsToGit(deps, options.repos, options.type, deps_vars,
-                                   svn_deps_vars, options.verify)
+  deps, baddeps = ConvertDepsToGit(deps, options.repos, options.workspace,
+                                   options.type, deps_vars, svn_deps_vars,
+                                   options.verify)
   for os_dep in deps_os:
     deps_os[os_dep], os_bad_deps = ConvertDepsToGit(deps_os[os_dep],
-                                       options.repos, options.type, deps_vars,
-                                       svn_deps_vars, options.verify)
+                                       options.repos, options.workspace,
+                                       options.type, deps_vars, svn_deps_vars,
+                                       options.verify)
     baddeps = baddeps.union(os_bad_deps)
 
   if baddeps:

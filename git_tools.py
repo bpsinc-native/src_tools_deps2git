@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 
+import os
 import re
 import subprocess
 
@@ -12,12 +13,12 @@ import subprocess
 VERBOSE = False
 
 
-def GetStatusOutput(cmd):
+def GetStatusOutput(cmd, cwd=None):
   """Return (status, output) of executing cmd in a shell."""
   if VERBOSE:
     print ''
     print '[DEBUG] Running "%s"' % cmd
-  proc = subprocess.Popen(cmd, shell=True, universal_newlines=True,
+  proc = subprocess.Popen(cmd, shell=True, universal_newlines=True, cwd=cwd,
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   output = ''.join(proc.stdout.readlines())
   status = proc.wait()
@@ -32,24 +33,32 @@ def GetStatusOutput(cmd):
   return (status, output)
 
 
-def Git(git_repo, command):
+def Git(git_repo, command, is_mirror=False):
   """Execute a git command within a local git repo."""
-  cmd = 'git --git-dir=%s %s' % (git_repo, command)
-  (status, output) = GetStatusOutput(cmd)
+  if is_mirror:
+    cmd = 'git --git-dir=%s %s' % (git_repo, command)
+    cwd = None
+  else:
+    cmd = 'git %s' % command
+    cwd = git_repo
+  (status, output) = GetStatusOutput(cmd, cwd)
   if status != 0:
     raise Exception('Failed to run %s. error %d. output %s' % (cmd, status,
                                                                output))
   return (status, output)
 
 
-def Clone(git_url, git_repo):
+def Clone(git_url, git_repo, is_mirror):
   """Clone a repository."""
-  Git(git_repo, 'clone --mirror %s %s' % (git_url, git_repo))
+  cmd = 'clone%s %s %s' % (' --mirror' if is_mirror else '', git_url, git_repo)
+  if not is_mirror and not os.path.exists(git_repo):
+    os.mkdir(git_repo)
+  return Git(git_repo, cmd, is_mirror)
 
 
-def Fetch(git_repo):
+def Fetch(git_repo, is_mirror):
   """Fetch the latest objects for a given git repository."""
-  Git(git_repo, 'fetch')
+  Git(git_repo, 'fetch', is_mirror)
 
 
 def Ping(git_repo):
@@ -123,11 +132,12 @@ def CreateLessThanOrEqualRegex(number):
   return regex
 
 
-def Search(git_repo, svn_rev):
+def Search(git_repo, svn_rev, is_mirror):
   """Return the Git commit id matching the given SVN revision."""
   regex = CreateLessThanOrEqualRegex(svn_rev)
   (status, output) = Git(git_repo, ('log -E --grep=".*git-svn-id:.*@%s " '
-                                    '-1 --format=%%H FETCH_HEAD') % regex)
+                                    '-1 --format=%%H FETCH_HEAD') % regex,
+                         is_mirror)
   if output != '':
     output = output.splitlines()[0]
 
