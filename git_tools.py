@@ -58,7 +58,7 @@ def Clone(git_url, git_repo, is_mirror):
 
 def Fetch(git_repo, is_mirror):
   """Fetch the latest objects for a given git repository."""
-  Git(git_repo, 'fetch', is_mirror)
+  Git(git_repo, 'fetch origin +refs/heads/master', is_mirror)
 
 
 def Ping(git_repo):
