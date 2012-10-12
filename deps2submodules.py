@@ -132,7 +132,7 @@ def main():
                     help='Skip all actions that assume a git working copy '
                          '(to support presubmit checks)')
   parser.add_option('--rewrite-url', action='append', metavar='OLD_URL=NEW_URL',
-                    help='Translate urls according to this rule')
+                    default=[], help='Translate urls according to this rule')
   options, args = parser.parse_args()
   if args:
     deps_file = args[0]
