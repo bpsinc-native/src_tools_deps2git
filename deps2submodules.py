@@ -57,14 +57,24 @@ def CollateDeps(deps_content):
   return submods
 
 
-def WriteGitmodules(submods, gitless=False):
+def WriteGitmodules(submods, gitless=False, rewrite_rules=None):
   """
   Take the output of CollateDeps, use it to write a .gitmodules file and
   add submodules to the git index.
   """
+  if not rewrite_rules:
+    rewrite_rules = []
+  def _rewrite(url):
+    if not url:
+      return url
+    for rule in rewrite_rules:
+      if url.startswith(rule[0]):
+        return rule[1] + url[len(rule[0]):]
+    return url
   fh = open('.gitmodules', 'w')
   for submod in sorted(submods.keys()):
     [submod_os, submod_url, submod_sha1] = submods[submod]
+    submod_url = _rewrite(submod_url)
     print >>fh, '[submodule "%s"]' % submod 
     print >>fh, '\tpath = %s' % submod
     print >>fh, '\turl = %s' % (submod_url if submod_url else '')
@@ -121,11 +131,23 @@ def main():
   parser.add_option('--gitless', action='store_true',
                     help='Skip all actions that assume a git working copy '
                          '(to support presubmit checks)')
+  parser.add_option('--rewrite-url', action='append', metavar='OLD_URL=NEW_URL',
+                    help='Translate urls according to this rule')
   options, args = parser.parse_args()
   if args:
     deps_file = args[0]
   else:
     deps_file = '.DEPS.git'
+
+  rewrite_rules = []
+  for rule in options.rewrite_url:
+    (old_url, new_url) = rule.split('=', 1)
+    if not old_url or not new_url:
+      print 'Bad url rewrite rule: "%s"' % rule
+      parser.print_help()
+      return 1
+    rewrite_rules.append((old_url, new_url))
+      
 
   # 9/18/2012 -- HACK to fix try bots without restarting
   hack_deps_file = os.path.join('src', '.DEPS.git')
@@ -133,7 +155,7 @@ def main():
     deps_file = hack_deps_file
         
   WriteGitmodules(SanitizeDeps(CollateDeps(GetDepsContent(deps_file))),
-                  gitless=options.gitless)
+                  rewrite_rules=rewrite_rules, gitless=options.gitless)
   if not options.gitless:
     RemoveObsoleteSubmodules()
   return 0
