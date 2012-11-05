@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright (c) 2012 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -5,6 +6,7 @@
 import unittest
 
 import deps2submodules
+
 
 class Deps2SubmodulesCollateDepsTest(unittest.TestCase):
   def testBasic(self):
@@ -19,7 +21,7 @@ class Deps2SubmodulesCollateDepsTest(unittest.TestCase):
       'third_party/monkeyfood':
           [['all'], 'http://git.chromium.org/monkeyfood', 'def456'],
     }
-    self.assertDictEqual(expected, deps2submodules.CollateDeps(arg))
+    self.assertEqual(expected, deps2submodules.CollateDeps(arg))
 
   def testSrcPrefixStrip(self):
     arg = ({
@@ -31,7 +33,7 @@ class Deps2SubmodulesCollateDepsTest(unittest.TestCase):
       'not_in_src/foo':
           [['all'], 'http://other.git.something/main.git', '123456'],
     }
-    self.assertDictEqual(expected, deps2submodules.CollateDeps(arg))
+    self.assertEqual(expected, deps2submodules.CollateDeps(arg))
 
   def testOSDeps(self):
     arg = ({
@@ -58,7 +60,7 @@ class Deps2SubmodulesCollateDepsTest(unittest.TestCase):
       'multios':
           [['win', 'linux'], 'http://git.chromium.org/multi.git', '000005'],
     }
-    self.assertDictEqual(expected, deps2submodules.CollateDeps(arg))
+    self.assertEqual(expected, deps2submodules.CollateDeps(arg))
 
   def testOSDepsWithNone(self):
     arg = ({
@@ -66,7 +68,7 @@ class Deps2SubmodulesCollateDepsTest(unittest.TestCase):
       'src/aura': 'http://git.chromium.org/aura.git',
     }, {
       'ios': {
-        'src/skia': None, 
+        'src/skia': None,
         'src/apple': 'http://git.chromium.org/apple.git@def456',
       }
     })
@@ -75,7 +77,8 @@ class Deps2SubmodulesCollateDepsTest(unittest.TestCase):
       'aura': [['all'], 'http://git.chromium.org/aura.git', ''],
       'apple': [['ios'], 'http://git.chromium.org/apple.git', 'def456'],
     }
-    self.assertDictEqual(expected, deps2submodules.CollateDeps(arg))
+    self.assertEqual(expected, deps2submodules.CollateDeps(arg))
+
 
 if __name__ == '__main__':
   unittest.main()

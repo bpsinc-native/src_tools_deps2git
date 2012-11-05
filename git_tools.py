@@ -63,7 +63,7 @@ def Fetch(git_repo, is_mirror):
 
 def Ping(git_repo):
   """Confirm that a remote repository URL is valid."""
-  status, output = GetStatusOutput('git ls-remote ' + git_repo)
+  status, _ = GetStatusOutput('git ls-remote ' + git_repo)
   return status == 0
 
 
@@ -135,9 +135,9 @@ def CreateLessThanOrEqualRegex(number):
 def Search(git_repo, svn_rev, is_mirror):
   """Return the Git commit id matching the given SVN revision."""
   regex = CreateLessThanOrEqualRegex(svn_rev)
-  (status, output) = Git(git_repo, ('log -E --grep=".*git-svn-id:.*@%s " '
-                                    '-1 --format=%%H FETCH_HEAD') % regex,
-                         is_mirror)
+  (_, output) = Git(git_repo, ('log -E --grep=".*git-svn-id:.*@%s " '
+                               '-1 --format=%%H FETCH_HEAD') % regex,
+                    is_mirror)
   if output != '':
     output = output.splitlines()[0]
 

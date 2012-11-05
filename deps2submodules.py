@@ -30,7 +30,7 @@ def SanitizeDeps(submods):
       if may_conflict in submods:
         msg = ('Warning: dropping submodule "%s", because '
                'it is nested in submodule "%s".' % (submod_name, may_conflict))
-        print >>sys.stderr, msg
+        print >> sys.stderr, msg
         submods.pop(submod_name)
         break
       parts.pop()
@@ -75,10 +75,10 @@ def WriteGitmodules(submods, gitless=False, rewrite_rules=None):
   for submod in sorted(submods.keys()):
     [submod_os, submod_url, submod_sha1] = submods[submod]
     submod_url = _rewrite(submod_url)
-    print >>fh, '[submodule "%s"]' % submod 
-    print >>fh, '\tpath = %s' % submod
-    print >>fh, '\turl = %s' % (submod_url if submod_url else '')
-    print >>fh, '\tos = %s' % ','.join(submod_os)
+    print >> fh, '[submodule "%s"]' % submod
+    print >> fh, '\tpath = %s' % submod
+    print >> fh, '\turl = %s' % (submod_url if submod_url else '')
+    print >> fh, '\tos = %s' % ','.join(submod_os)
     if submod_sha1 and not SHA1_RE.match(submod_sha1):
       raise RuntimeError('sha1 hash "%s" for submodule "%s" is malformed' %
                          (submod_sha1, submod))
@@ -113,7 +113,7 @@ def RemoveObsoleteSubmodules():
   grep_proc = subprocess.Popen(['grep', '^160000'],
                                stdin = lsfiles_proc.stdout,
                                stdout=subprocess.PIPE)
-  (grep_out, _) = grep_proc.communicate()
+  (grep_out, _) = grep_proc.communicate() or ('', '')
   lsfiles_proc.communicate()
   with open(os.devnull, 'w') as nullpipe:
     for line in grep_out.splitlines():

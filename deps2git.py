@@ -87,11 +87,11 @@ def ConvertDepsToGit(deps, repos, workspace, deps_type, deps_vars,
         continue
 
     if verify:
-      print >>sys.stderr, 'checking '  + git_url + '...',
+      print >> sys.stderr, 'checking '  + git_url + '...',
       if git_tools.Ping(git_url):
-        print >>sys.stderr, ' success'
+        print >> sys.stderr, ' success'
       else:
-        print >>sys.stderr, ' failure'
+        print >> sys.stderr, ' failure'
         bad_git_urls.update([git_url])
 
     # Get the Git hash based off the SVN rev.
@@ -167,19 +167,19 @@ def main():
     baddeps = baddeps.union(os_bad_deps)
 
   if baddeps:
-    print >>sys.stderr, ('\nUnable to resolve the following repositories. '
+    print >> sys.stderr, ('\nUnable to resolve the following repositories. '
         'Please make sure\nthat any svn URLs have a git mirror associated with '
         'them.\nTo see the exact error, run `git ls-remote [repository]` where'
         '\n[repository] is the URL ending in .git (strip off the @revision\n'
         'number.) For more information, visit http://code.google.com\n'
         '/p/chromium/wiki/UsingNewGit#Adding_new_repositories_to_DEPS.\n')
     for dep in baddeps:
-      print >>sys.stderr, ' ' + dep
+      print >> sys.stderr, ' ' + dep
     return 2
   else:
     if options.verify:
-      print >>sys.stderr, ('\nAll referenced repositories were successfully '
-                           'resolved.')
+      print >> sys.stderr, ('\nAll referenced repositories were successfully '
+                            'resolved.')
       return 0
 
   # Write the DEPS file to disk.
