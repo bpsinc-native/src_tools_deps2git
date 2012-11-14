@@ -7,10 +7,14 @@
 import os
 import re
 import subprocess
+import threading
 
 
 # Show more information about the commands being executed.
 VERBOSE = False
+
+# The longest any single subprocess will be allowed to run.
+TIMEOUT = 20 * 60
 
 
 def GetStatusOutput(cmd, cwd=None):
@@ -18,19 +22,37 @@ def GetStatusOutput(cmd, cwd=None):
   if VERBOSE:
     print ''
     print '[DEBUG] Running "%s"' % cmd
-  proc = subprocess.Popen(cmd, shell=True, universal_newlines=True, cwd=cwd,
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  output = ''.join(proc.stdout.readlines())
-  status = proc.wait()
-  if status is None:
-    status = 0
 
+  def _thread_main():
+    thr = threading.current_thread()
+    thr.status = -1
+    thr.stdout = ''
+    thr.stderr = '<timeout>'
+    try:
+      proc = subprocess.Popen(cmd, shell=True, universal_newlines=True, cwd=cwd,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      (stdout, _) = proc.communicate()
+    except Exception, e:
+      thr.status = -1
+      thr.stdout = ''
+      thr.stderr = repr(e)
+    else:
+      thr.status = proc.returncode
+      thr.stdout = stdout
+      thr.stderr = ''
+
+  thr = threading.Thread(target=_thread_main)
+  thr.daemon = True
+  thr.start()
+  thr.join(TIMEOUT)
+
+  # pylint: disable=E1101
   if VERBOSE:
-    short_output = ' '.join(output.splitlines())
+    short_output = ' '.join(thr.stdout.splitlines())
     short_output = short_output.strip(' \t\n\r')
-    print '[DEBUG] Output: %d, %-60s' % (status, short_output)
+    print '[DEBUG] Output: %d, %-60s' % (thr.status, short_output)
 
-  return (status, output)
+  return (thr.status, thr.stdout)
 
 
 def Git(git_repo, command, is_mirror=False):
