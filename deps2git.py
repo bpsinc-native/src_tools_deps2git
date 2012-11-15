@@ -149,7 +149,7 @@ def main():
 
   # Create a var containing the Git and Webkit URL, this will make it easy for
   # people to use a mirror instead.
-  git_url = 'http://git.chromium.org'
+  git_url = 'https://chromium.googlesource.com'
   deps_vars = {
       'git_url': git_url,
       'webkit_url': git_url + '/external/WebKit_trimmed.git'

@@ -92,9 +92,11 @@ def PrettyObj(obj):
 
 def Varify(deps):
   """Replace all instances of our git server with a git_url var."""
-  deps = deps.replace('\'http://git.chromium.org/external/WebKit_trimmed.git',
-                      'Var(\'webkit_url\')')
-  deps = deps.replace('\'http://git.chromium.org', 'Var(\'git_url\') + \'')
+  deps = deps.replace(
+      '\'https://chromium.googlesource.com/external/WebKit_trimmed.git',
+      'Var(\'webkit_url\')')
+  deps = deps.replace(
+      '\'https://chromium.googlesource.com', 'Var(\'git_url\') + \'')
   deps = deps.replace('VAR_WEBKIT_REV\'', ' + Var(\'webkit_rev\')')
 
   # Try to replace all instances of form "marker_prefix_<name>'" with
