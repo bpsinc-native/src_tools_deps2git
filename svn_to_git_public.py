@@ -8,7 +8,7 @@
 import re
 
 
-GIT_HOST = 'http://git.chromium.org/'
+GIT_HOST = 'https://chromium.googlesource.com/'
 
 
 # Used by deps2git.ConvertDepsToGit() as overrides for SVN DEPS.  Each entry

@@ -78,8 +78,10 @@ def Clone(git_url, git_repo, is_mirror):
   return Git(git_repo, cmd, is_mirror)
 
 
-def Fetch(git_repo, is_mirror):
+def Fetch(git_repo, git_url, is_mirror):
   """Fetch the latest objects for a given git repository."""
+  # Always update the upstream url
+  Git(git_repo, 'config remote.origin.url %s' % git_url)
   Git(git_repo, 'fetch origin +refs/heads/master', is_mirror)
 
 
