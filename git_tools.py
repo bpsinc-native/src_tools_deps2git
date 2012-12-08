@@ -74,7 +74,7 @@ def Clone(git_url, git_repo, is_mirror):
   """Clone a repository."""
   cmd = 'clone%s %s %s' % (' --mirror' if is_mirror else '', git_url, git_repo)
   if not is_mirror and not os.path.exists(git_repo):
-    os.mkdir(git_repo)
+    os.makedirs(git_repo)
   return Git(git_repo, cmd, is_mirror)
 
 
