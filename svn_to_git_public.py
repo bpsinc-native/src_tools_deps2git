@@ -63,12 +63,6 @@ def SvnUrlToGitUrl(path, svn_url):
     # Those can't be git svn cloned. Skipping for now.
     return (None, None)
 
-
-  if svn_url == ('http://eyes-free.googlecode.com/svn/trunk/braille/client/'
-                 'src/com/googlecode/eyesfree/braille'):
-    return (path, (GIT_HOST + 'external/eyes-free/braille/client/src/com/'
-                   'googlecode/eyesfree/braille.git'))
-
   # Projects on sourceforge using trunk
   match = re.match('http?://(.*).svn.sourceforge.net/svnroot/(.*)/trunk(.*)',
                    svn_url)
