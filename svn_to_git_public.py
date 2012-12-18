@@ -53,7 +53,7 @@ def SvnUrlToGitUrl(path, svn_url):
     return (path, GIT_HOST + 'chromium/third_party/ffmpeg.git')
 
   if svn_url == '/trunk/deps/cdm':
-    return (path, GIT_HOST + 'chromium/cdm')
+    return (path, GIT_HOST + 'chromium/cdm.git')
 
   if svn_url == 'http://webrtc.googlecode.com/svn/stable/webrtc':
     return (path, GIT_HOST + 'external/webrtc/stable/webrtc.git')
