@@ -23,11 +23,9 @@ DEPS_OVERRIDES = {
 def SvnUrlToGitUrl(path, svn_url):
   """Convert a chromium SVN URL to a chromium Git URL."""
 
-  match = re.match(
-      '(http://src.chromium.org/svn|svn://svn.chromium.org/chrome)(/.*)',
-      svn_url)
+  match = re.match('http://src.chromium.org/svn(/.*)', svn_url)
   if match:
-    svn_url = match.group(2)
+    svn_url = match.group(1)
 
   # A few special cases.
   if svn_url == '/trunk/deps/page_cycler/acid3':

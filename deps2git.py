@@ -11,7 +11,6 @@ import sys
 
 import deps_utils
 import git_tools
-import svn_to_git_public
 
 
 def SplitScmUrl(url):
@@ -31,7 +30,7 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
   if git_url.startswith(git_host):
     git_repo = git_url.replace(git_host, '')
   else:
-    raise Exception('Unknown git server %s, host %s' % (git_url, git_host))
+    raise Exception('Unknown git server')
   if repos_path is None and workspace is None:
     # We're running without a repository directory (i.e. no -r option).
     # We cannot actually find the commit id, but this mode is useful
@@ -51,22 +50,22 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
   return git_tools.Search(git_repo_path, svn_rev, mirror)
 
 
-def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
+def ConvertDepsToGit(deps, repos, workspace, deps_type, deps_vars,
+                     svn_deps_vars, verify):
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
   new_deps = {}
   bad_git_urls = set([])
 
-  svn_to_git_objs = [svn_to_git_public]
-  if options.extra_rules:
-    rules_dir, rules_file = os.path.split(options.extra_rules)
-    rules_file_base = os.path.splitext(rules_file)[0]
-    sys.path.insert(0, rules_dir)
-    svn_to_git_objs.insert(0, __import__(rules_file_base))
+  try:
+    sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+    svn_to_git = __import__('svn_to_git_%s' % deps_type)
+  except ImportError:
+    raise Exception('invalid DEPS type')
 
+  # Pull in any DEPS overrides from svn_to_git.
   deps_overrides = {}
-  # Allow extra_rules file to override rules in public file.
-  for svn_to_git_obj in reversed(svn_to_git_objs):
-    deps_overrides.update(getattr(svn_to_git_obj, 'DEPS_OVERRIDES', {}))
+  if hasattr(svn_to_git, 'DEPS_OVERRIDES'):
+    deps_overrides.update(svn_to_git.DEPS_OVERRIDES)
 
   for dep in deps:
     if not deps[dep]:  # dep is 'None' and emitted to exclude the dep
@@ -81,17 +80,13 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
 
     if not dep_url.endswith('.git'):
       # Convert this SVN URL to a Git URL.
-      for svn_git_converter in svn_to_git_objs:
-        converted_data = svn_git_converter.SvnUrlToGitUrl(dep, dep_url)
-        if converted_data:
-          path, git_url = converted_data
-          git_host = svn_git_converter.GIT_HOST
-          break
-      else:
+      path, git_url = svn_to_git.SvnUrlToGitUrl(dep, dep_url)
+
+      if not path or not git_url:
         # We skip this path, this must not be required with Git.
         continue
 
-    if options.verify:
+    if verify:
       print >> sys.stderr, 'checking '  + git_url + '...',
       if git_tools.Ping(git_url):
         print >> sys.stderr, ' success'
@@ -117,9 +112,8 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
         if dep_url.endswith('.git'):
           git_hash = '@%s' % dep_rev
         else:
-          git_hash = '@%s' % SvnRevToGitHash(
-              dep_rev, git_url, options.repos, options.workspace, path,
-              git_host)
+          git_hash = '@%s' % SvnRevToGitHash(dep_rev, git_url, repos, workspace,
+                                             path, svn_to_git.GIT_HOST)
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit/Source':
@@ -138,10 +132,8 @@ def main():
                     help='path to the DEPS file to convert')
   parser.add_option('-o', '--out',
                     help='path to the converted DEPS file (default: stdout)')
-  parser.add_option('-t', '--type',
-                    help='[DEPRECATED] type of DEPS file (public, etc)')
-  parser.add_option('-x', '--extra-rules',
-                    help='Path to file with additional conversion rules.')
+  parser.add_option('-t', '--type', default='public',
+                    help='type of DEPS file (public, etc)')
   parser.add_option('-r', '--repos',
                     help='path to the directory holding all the Git repos')
   parser.add_option('-w', '--workspace', metavar='PATH',
@@ -155,16 +147,6 @@ def main():
   (deps, deps_os, include_rules, skip_child_includes, hooks,
    svn_deps_vars) = deps_content
 
-  if options.extra_rules and options.type:
-    parser.error('Can\'t specify type and extra-rules at the same time.')
-  elif options.type:
-    options.extra_rules = os.path.join(
-        os.path.abspath(os.path.dirname(__file__)),
-        'svn_to_git_%s.py' % options.type)
-
-  if options.extra_rules and not os.path.exists(options.extra_rules):
-    raise Exception('Can\'t locate rules file "%s".' % options.extra_rules)
-
   # Create a var containing the Git and Webkit URL, this will make it easy for
   # people to use a mirror instead.
   git_url = 'https://chromium.googlesource.com'
@@ -174,10 +156,14 @@ def main():
   }
 
   # Convert the DEPS file to Git.
-  deps, baddeps = ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars)
+  deps, baddeps = ConvertDepsToGit(deps, options.repos, options.workspace,
+                                   options.type, deps_vars, svn_deps_vars,
+                                   options.verify)
   for os_dep in deps_os:
-    deps_os[os_dep], os_bad_deps = ConvertDepsToGit(
-        deps_os[os_dep], options, deps_vars, svn_deps_vars)
+    deps_os[os_dep], os_bad_deps = ConvertDepsToGit(deps_os[os_dep],
+                                       options.repos, options.workspace,
+                                       options.type, deps_vars, svn_deps_vars,
+                                       options.verify)
     baddeps = baddeps.union(os_bad_deps)
 
   if baddeps:
