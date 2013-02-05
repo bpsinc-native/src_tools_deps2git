@@ -23,9 +23,11 @@ DEPS_OVERRIDES = {
 def SvnUrlToGitUrl(path, svn_url):
   """Convert a chromium SVN URL to a chromium Git URL."""
 
-  match = re.match('http://src.chromium.org/svn(/.*)', svn_url)
+  match = re.match(
+      '(http://src.chromium.org/svn|svn://svn.chromium.org/chrome)(/.*)',
+      svn_url)
   if match:
-    svn_url = match.group(1)
+    svn_url = match.group(2)
 
   # A few special cases.
   if svn_url == '/trunk/deps/page_cycler/acid3':
@@ -70,7 +72,7 @@ def SvnUrlToGitUrl(path, svn_url):
   if svn_url in ('http://selenium.googlecode.com/svn/trunk/py/test',
                  '/trunk/deps/reference_builds/chrome'):
     # Those can't be git svn cloned. Skipping for now.
-    return (None, None)
+    return
 
   # Projects on sourceforge using trunk
   match = re.match('http?://(.*).svn.sourceforge.net/svnroot/(.*)/trunk(.*)',
@@ -121,10 +123,10 @@ def SvnUrlToGitUrl(path, svn_url):
   # Ignore all webkit directories (other than the above), since we fetch the
   # whole thing directly for all but iOS.
   if svn_url == '/trunk/deps/third_party/WebKit':
-    return (None, None)
+    return
 
   if svn_url.startswith('http://svn.webkit.org'):
-    return (None, None)
+    return
 
   # Subdirectories of the chromium deps/third_party directory.
   match = re.match('/trunk/deps/third_party/(.*)', svn_url)
