@@ -69,6 +69,9 @@ def SvnUrlToGitUrl(path, svn_url):
   if svn_url == 'http://webrtc.googlecode.com/svn/stable/src':
     return (path, GIT_HOST + 'external/webrtc/stable/src.git')
 
+  if svn_url == 'http://webrtc.googlecode.com/svn/deps/third_party/openmax':
+    return (path, GIT_HOST + 'external/webrtc/deps/third_party/openmax.git')
+
   if svn_url in ('http://selenium.googlecode.com/svn/trunk/py/test',
                  '/trunk/deps/reference_builds/chrome'):
     # Those can't be git svn cloned. Skipping for now.
