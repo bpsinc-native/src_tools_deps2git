@@ -93,7 +93,7 @@ def PrettyObj(obj):
 def Varify(deps):
   """Replace all instances of our git server with a git_url var."""
   deps = deps.replace(
-      '\'https://chromium.googlesource.com/external/WebKit_trimmed.git',
+      '\'https://chromium.googlesource.com/chromium/blink.git',
       'Var(\'webkit_url\')')
   deps = deps.replace(
       '\'https://chromium.googlesource.com', 'Var(\'git_url\') + \'')

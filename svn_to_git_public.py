@@ -10,6 +10,7 @@ import re
 
 GIT_HOST = 'https://chromium.googlesource.com/'
 
+BLINK_TRUNK = 'http://src.chromium.org/blink/trunk'
 
 # Used by deps2git.ConvertDepsToGit() as overrides for SVN DEPS.  Each entry
 # maps a DEPS path to a DEPS variable identifying the Git hash for its
@@ -108,10 +109,10 @@ def SvnUrlToGitUrl(path, svn_url):
     repo = '%s.git' % match.group(1)
     return (path, GIT_HOST + 'chromium/%s' % repo)
 
-  # Main webkit directory.
-  if svn_url == 'http://svn.webkit.org/repository/webkit/trunk/Source':
+  # Main blink directory.
+  if svn_url == '%s/Source' % BLINK_TRUNK:
     return ('src/third_party/WebKit',
-            GIT_HOST + 'external/WebKit_trimmed.git')
+            GIT_HOST + 'chromium/blink.git')
 
   # Minimal header-only webkit directories for iOS.
   if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
@@ -128,8 +129,10 @@ def SvnUrlToGitUrl(path, svn_url):
   if svn_url == '/trunk/deps/third_party/WebKit':
     return
 
-  if svn_url.startswith('http://svn.webkit.org'):
+  if svn_url.startswith(BLINK_TRUNK):
     return
+
+  # blink
 
   # Subdirectories of the chromium deps/third_party directory.
   match = re.match('/trunk/deps/third_party/(.*)', svn_url)

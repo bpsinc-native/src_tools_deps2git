@@ -169,7 +169,7 @@ def main():
   git_url = 'https://chromium.googlesource.com'
   deps_vars = {
       'git_url': git_url,
-      'webkit_url': git_url + '/external/WebKit_trimmed.git'
+      'webkit_url': git_url + '/chromium/blink.git',
   }
 
   # Convert the DEPS file to Git.
