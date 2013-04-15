@@ -25,7 +25,7 @@ def SplitScmUrl(url):
 
 
 def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
-                    git_host):
+                    git_host, svn_branch_name=None):
   """Convert a SVN revision to a Git commit id."""
   git_repo = None
   if git_url.startswith(git_host):
@@ -47,7 +47,14 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
   if not os.path.exists(git_repo_path):
     git_tools.Clone(git_url, git_repo_path, mirror)
   git_tools.Fetch(git_repo_path, git_url, mirror)
-  return git_tools.Search(git_repo_path, svn_rev, mirror)
+
+  if svn_branch_name:
+    # svn branches are mirrored with:
+    # branches = branches/*:refs/remotes/branch-heads/*
+    refspec = 'refs/remotes/branch-heads/' + svn_branch_name
+    return git_tools.Search(git_repo_path, svn_rev, mirror, refspec)
+  else:
+    return git_tools.Search(git_repo_path, svn_rev, mirror)
 
 
 def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
@@ -77,14 +84,17 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
 
     path = dep
     git_url = dep_url
+    svn_branch = None
 
     if not dep_url.endswith('.git'):
       # Convert this SVN URL to a Git URL.
       for svn_git_converter in svn_to_git_objs:
         converted_data = svn_git_converter.SvnUrlToGitUrl(dep, dep_url)
         if converted_data:
-          path, git_url = converted_data
+          path, git_url = converted_data[:2]
           git_host = svn_git_converter.GIT_HOST
+          if len(converted_data) > 2:
+            svn_branch = converted_data[2]
           break
       else:
         # We skip this path, this must not be required with Git.
@@ -118,7 +128,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
         else:
           git_hash = '@%s' % SvnRevToGitHash(
               dep_rev, git_url, options.repos, options.workspace, path,
-              git_host)
+              git_host, svn_branch)
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit/Source':

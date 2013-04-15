@@ -91,11 +91,19 @@ def SvnUrlToGitUrl(path, svn_url):
     repo = '%s%s.git' % (match.group(1), match.group(2))
     return (path, GIT_HOST + 'external/%s' % repo)
 
-  # Projects on googlecode.com usng branches.
-  match = re.match('http://(.*).googlecode.com/svn/branches/(.*)', svn_url)
+  # Projects on googlecode.com using branches.
+  # Branches should be automatically included in the projects corresponding
+  # 'trunk' mirror as 'branch-heads' refspecs.
+  # This makes some broad assumptions about a "standard" branch layout , i.e.:
+  #   svn/branches/<branch_name>/<optional_sub_path>
+  # This layout can't really be enforced, though it appears to apply to most
+  # repos. Outliers will have to be special-cased.
+  match = re.match('http://(.*).googlecode.com/svn/branches/([^/]+)(.*)',
+                   svn_url)
   if match:
-    repo = '%s/%s.git' % (match.group(1), match.group(2))
-    return (path, GIT_HOST + 'external/%s' % repo)
+    repo = '%s%s.git' % (match.group(1), match.group(3))
+    branch_name = match.group(2)
+    return (path, GIT_HOST + 'external/%s' % repo, branch_name)
 
   # Projects that are subdirectories of the native_client repository.
   match = re.match('http://src.chromium.org/native_client/trunk/(.*)', svn_url)
