@@ -51,7 +51,10 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
   if svn_branch_name:
     # svn branches are mirrored with:
     # branches = branches/*:refs/remotes/branch-heads/*
-    refspec = 'refs/remotes/branch-heads/' + svn_branch_name
+    if mirror:
+      refspec = 'refs/branch-heads/' + svn_branch_name
+    else:
+      refspec = 'refs/remotes/branch-heads/' + svn_branch_name
     return git_tools.Search(git_repo_path, svn_rev, mirror, refspec)
   else:
     return git_tools.Search(git_repo_path, svn_rev, mirror)
