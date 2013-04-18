@@ -82,7 +82,7 @@ def Fetch(git_repo, git_url, is_mirror):
   """Fetch the latest objects for a given git repository."""
   # Always update the upstream url
   Git(git_repo, 'config remote.origin.url %s' % git_url)
-  Git(git_repo, 'fetch origin +refs/heads/master', is_mirror)
+  Git(git_repo, 'fetch origin', is_mirror)
 
 
 def Ping(git_repo):
