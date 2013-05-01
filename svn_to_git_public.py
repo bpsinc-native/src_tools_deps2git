@@ -118,9 +118,8 @@ def SvnUrlToGitUrl(path, svn_url):
     return (path, GIT_HOST + 'chromium/%s' % repo)
 
   # Main blink directory.
-  if svn_url == '%s/Source' % BLINK_TRUNK:
-    return ('src/third_party/WebKit',
-            GIT_HOST + 'chromium/blink.git')
+  if svn_url == BLINK_TRUNK:
+    return (path, GIT_HOST + 'chromium/blink.git')
 
   # Minimal header-only webkit directories for iOS.
   if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
