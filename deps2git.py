@@ -138,7 +138,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
               git_host, svn_branch)
 
     # If this is webkit, we need to add the var for the hash.
-    if dep == 'src/third_party/WebKit/Source':
+    if dep == 'src/third_party/WebKit' and dep_rev:
       deps_vars['webkit_rev'] = git_hash
       git_hash = 'VAR_WEBKIT_REV'
 
