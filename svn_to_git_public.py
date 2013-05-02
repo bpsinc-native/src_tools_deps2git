@@ -31,6 +31,10 @@ def SvnUrlToGitUrl(path, svn_url):
     svn_url = match.group(2)
 
   # A few special cases.
+  if (svn_url ==
+      'http://sctp-refimpl.googlecode.com/svn/trunk/KERN/usrsctp/usrsctplib'):
+    return (path, GIT_HOST + 'external/usrsctplib.git')
+
   if svn_url == '/trunk/deps/page_cycler/acid3':
     return (path, GIT_HOST + 'chromium/deps/acid3.git')
 
