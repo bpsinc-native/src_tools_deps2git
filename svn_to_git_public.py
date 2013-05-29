@@ -121,6 +121,10 @@ def SvnUrlToGitUrl(path, svn_url):
     repo = '%s.git' % match.group(1)
     return (path, GIT_HOST + 'chromium/%s' % repo)
 
+  # Public-header-only blink directory for iOS.
+  if svn_url == (BLINK_TRUNK + '/public'):
+    return (path, GIT_HOST + 'chromium/blink-public.git')
+
   # Main blink directory.
   if svn_url == BLINK_TRUNK:
     return (path, GIT_HOST + 'chromium/blink.git')
