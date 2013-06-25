@@ -98,8 +98,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
       for svn_git_converter in svn_to_git_objs:
         converted_data = svn_git_converter.SvnUrlToGitUrl(dep, dep_url)
         if converted_data:
-          path, git_url = converted_data[:2]
-          git_host = svn_git_converter.GIT_HOST
+          path, git_url, git_host = converted_data[:3]
           if len(converted_data) > 2:
             svn_branch = converted_data[2]
           break

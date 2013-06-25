@@ -33,49 +33,51 @@ def SvnUrlToGitUrl(path, svn_url):
   # A few special cases.
   if (svn_url ==
       'http://sctp-refimpl.googlecode.com/svn/trunk/KERN/usrsctp/usrsctplib'):
-    return (path, GIT_HOST + 'external/usrsctplib.git')
+    return (path, GIT_HOST + 'external/usrsctplib.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/page_cycler/acid3':
-    return (path, GIT_HOST + 'chromium/deps/acid3.git')
+    return (path, GIT_HOST + 'chromium/deps/acid3.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/canvas_bench':
-    return (path, GIT_HOST + 'chromium/canvas_bench.git')
+    return (path, GIT_HOST + 'chromium/canvas_bench.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/gpu/software_rendering_list':
-    return (path, GIT_HOST + 'chromium/deps/gpu/software_rendering_list.git')
+    return (path, GIT_HOST + 'chromium/deps/gpu/software_rendering_list.git',
+            GIT_HOST)
 
   if svn_url == '/trunk/tools/third_party/python_26':
-    return (path, GIT_HOST + 'chromium/deps/python_26.git')
+    return (path, GIT_HOST + 'chromium/deps/python_26.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/support':
-    return (path, GIT_HOST + 'chromium/support.git')
+    return (path, GIT_HOST + 'chromium/support.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/frame_rate/content':
-    return (path, GIT_HOST + 'chromium/frame_rate/content.git')
+    return (path, GIT_HOST + 'chromium/frame_rate/content.git', GIT_HOST)
 
   if svn_url == 'svn://svn.chromium.org/boto':
-    return (path, GIT_HOST + 'external/boto.git')
+    return (path, GIT_HOST + 'external/boto.git', GIT_HOST)
 
   if svn_url == 'svn://svn.chromium.org/gsutil/trunk/src':
-    return (path, GIT_HOST + 'external/gsutil/src.git')
+    return (path, GIT_HOST + 'external/gsutil/src.git', GIT_HOST)
 
   if svn_url == 'svn://svn.chromium.org/jsoncpp/trunk/jsoncpp':
-    return (path, GIT_HOST + 'external/jsoncpp/jsoncpp.git')
+    return (path, GIT_HOST + 'external/jsoncpp/jsoncpp.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/third_party/ffmpeg':
-    return (path, GIT_HOST + 'chromium/third_party/ffmpeg.git')
+    return (path, GIT_HOST + 'chromium/third_party/ffmpeg.git', GIT_HOST)
 
   if svn_url == '/trunk/deps/cdm':
-    return (path, GIT_HOST + 'chromium/cdm.git')
+    return (path, GIT_HOST + 'chromium/cdm.git', GIT_HOST)
 
   if svn_url == 'http://webrtc.googlecode.com/svn/stable/webrtc':
-    return (path, GIT_HOST + 'external/webrtc/stable/webrtc.git')
+    return (path, GIT_HOST + 'external/webrtc/stable/webrtc.git', GIT_HOST)
 
   if svn_url == 'http://webrtc.googlecode.com/svn/stable/src':
-    return (path, GIT_HOST + 'external/webrtc/stable/src.git')
+    return (path, GIT_HOST + 'external/webrtc/stable/src.git', GIT_HOST)
 
   if svn_url == 'http://webrtc.googlecode.com/svn/deps/third_party/openmax':
-    return (path, GIT_HOST + 'external/webrtc/deps/third_party/openmax.git')
+    return (path, GIT_HOST + 'external/webrtc/deps/third_party/openmax.git',
+            GIT_HOST)
 
   if svn_url in ('http://selenium.googlecode.com/svn/trunk/py/test',
                  '/trunk/deps/reference_builds/chrome'):
@@ -87,13 +89,13 @@ def SvnUrlToGitUrl(path, svn_url):
                    svn_url)
   if match:
     repo = '%s%s.git' % (match.group(2), match.group(3))
-    return (path, GIT_HOST + 'external/%s' % repo)
+    return (path, GIT_HOST + 'external/%s' % repo, GIT_HOST)
 
   # Projects on googlecode.com using trunk.
   match = re.match('http?://(.*).googlecode.com/svn/trunk(.*)', svn_url)
   if match:
     repo = '%s%s.git' % (match.group(1), match.group(2))
-    return (path, GIT_HOST + 'external/%s' % repo)
+    return (path, GIT_HOST + 'external/%s' % repo, GIT_HOST)
 
   # Projects on googlecode.com using branches.
   # Branches should be automatically included in the projects corresponding
@@ -107,37 +109,39 @@ def SvnUrlToGitUrl(path, svn_url):
   if match:
     repo = '%s%s.git' % (match.group(1), match.group(3))
     branch_name = match.group(2)
-    return (path, GIT_HOST + 'external/%s' % repo, branch_name)
+    return (path, GIT_HOST + 'external/%s' % repo, branch_name, GIT_HOST)
 
   # Projects that are subdirectories of the native_client repository.
   match = re.match('http://src.chromium.org/native_client/trunk/(.*)', svn_url)
   if match:
     repo = '%s.git' % match.group(1)
-    return (path, GIT_HOST + 'native_client/%s' % repo)
+    return (path, GIT_HOST + 'native_client/%s' % repo, GIT_HOST)
 
   # Projects that are subdirectories of the chromium/{src,tools} repository.
   match = re.match('/trunk/((src|tools)/.*)', svn_url)
   if match:
     repo = '%s.git' % match.group(1)
-    return (path, GIT_HOST + 'chromium/%s' % repo)
+    return (path, GIT_HOST + 'chromium/%s' % repo, GIT_HOST)
 
   # Public-header-only blink directory for iOS.
   if svn_url == (BLINK_TRUNK + '/public'):
-    return (path, GIT_HOST + 'chromium/blink-public.git')
+    return (path, GIT_HOST + 'chromium/blink-public.git', GIT_HOST)
 
   # Main blink directory.
   if svn_url == BLINK_TRUNK:
-    return (path, GIT_HOST + 'chromium/blink.git')
+    return (path, GIT_HOST + 'chromium/blink.git', GIT_HOST)
 
   # Minimal header-only webkit directories for iOS.
   if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
                  'WebKit/chromium/public'):
     return (path,
-            GIT_HOST + 'external/WebKit/Source/WebKit/chromium/public.git')
+            GIT_HOST + 'external/WebKit/Source/WebKit/chromium/public.git',
+            GIT_HOST)
   if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
                  'Platform/chromium/public'):
     return (path,
-            GIT_HOST + 'external/WebKit/Source/Platform/chromium/public.git')
+            GIT_HOST + 'external/WebKit/Source/Platform/chromium/public.git',
+            GIT_HOST)
 
   # Ignore all webkit directories (other than the above), since we fetch the
   # whole thing directly for all but iOS.
@@ -153,13 +157,13 @@ def SvnUrlToGitUrl(path, svn_url):
   match = re.match('/trunk/deps/third_party/(.*)', svn_url)
   if match:
     repo = '%s.git' % match.group(1)
-    return (path, GIT_HOST + 'chromium/deps/%s' % repo)
+    return (path, GIT_HOST + 'chromium/deps/%s' % repo, GIT_HOST)
 
   # Subdirectories of the chromium deps/reference_builds directory.
   match = re.match('/trunk/deps/reference_builds/(.*)', svn_url)
   if match:
     repo = '%s.git' % match.group(1)
-    return (path, GIT_HOST + 'chromium/reference_builds/%s' % repo)
+    return (path, GIT_HOST + 'chromium/reference_builds/%s' % repo, GIT_HOST)
 
   # Nothing yet? Oops.
   print 'No match for %s' % svn_url
