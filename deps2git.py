@@ -99,8 +99,8 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
         converted_data = svn_git_converter.SvnUrlToGitUrl(dep, dep_url)
         if converted_data:
           path, git_url, git_host = converted_data[:3]
-          if len(converted_data) > 2:
-            svn_branch = converted_data[2]
+          if len(converted_data) > 3:
+            svn_branch = converted_data[3]
           break
       else:
         # We skip this path, this must not be required with Git.
