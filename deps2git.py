@@ -46,6 +46,7 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     mirror = False
   if not os.path.exists(git_repo_path):
     git_tools.Clone(git_url, git_repo_path, mirror)
+  git_tools.Fetch(git_repo_path, git_url, mirror)
 
   if svn_branch_name:
     # svn branches are mirrored with:
@@ -54,13 +55,13 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
       refspec = 'refs/branch-heads/' + svn_branch_name
     else:
       refspec = 'refs/remotes/branch-heads/' + svn_branch_name
+    return git_tools.Search(git_repo_path, svn_rev, mirror, refspec)
   else:
     if mirror:
       refspec = 'refs/heads/master'
     else:
       refspec = 'refs/remotes/origin/master'
-
-  return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
+    return git_tools.Search(git_repo_path, svn_rev, mirror, refspec)
 
 
 def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):

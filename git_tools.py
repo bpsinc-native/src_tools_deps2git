@@ -156,20 +156,16 @@ def CreateLessThanOrEqualRegex(number):
   return regex
 
 
-def Search(git_repo, svn_rev, is_mirror, refspec='FETCH_HEAD', fetch_url=None):
-  """Return the Git commit id matching the given SVN revision.
-
-  If fetch_url is not None, will update repo if revision is not found."""
+def Search(git_repo, svn_rev, is_mirror, refspec='FETCH_HEAD'):
+  """Return the Git commit id matching the given SVN revision."""
   regex = CreateLessThanOrEqualRegex(svn_rev)
   (_, output) = Git(git_repo, ('log -E --grep=".*git-svn-id:.*@%s " '
                                '-1 --format=%%H %s') % (regex, refspec),
                     is_mirror)
-  output = output.splitlines()[0]
+  if output != '':
+    output = output.splitlines()[0]
 
   print '%s: %s <-> %s' % (git_repo, output, svn_rev)
   if re.match('^[0-9a-fA-F]{40}$', output):
     return output
-  if fetch_url:
-    Fetch(git_repo, fetch_url, is_mirror)
-    return Search(git_repo, svn_rev, is_mirror, refspec, None)
   raise Exception('Cannot find revision %s in %s' % (svn_rev, git_repo))
