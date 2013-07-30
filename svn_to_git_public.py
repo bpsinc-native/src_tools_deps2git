@@ -72,6 +72,9 @@ def SvnUrlToGitUrl(path, svn_url):
   if svn_url == 'http://webrtc.googlecode.com/svn/stable/webrtc':
     return (path, GIT_HOST + 'external/webrtc/stable/webrtc.git', GIT_HOST)
 
+  if svn_url == 'http://webrtc.googlecode.com/svn/stable/talk':
+    return (path, GIT_HOST + 'external/webrtc/stable/talk.git', GIT_HOST)
+
   if svn_url == 'http://webrtc.googlecode.com/svn/stable/src':
     return (path, GIT_HOST + 'external/webrtc/stable/src.git', GIT_HOST)
 
