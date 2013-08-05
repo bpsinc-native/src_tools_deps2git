@@ -93,10 +93,10 @@ def SvnUrlToGitUrl(path, svn_url):
     return
 
   # Projects on sourceforge using trunk
-  match = re.match('^https?://(.*).svn.sourceforge.net/svnroot/(.*)/trunk(.*)',
+  match = re.match('^https?://svn.code.sf.net/p/(.*)/code/trunk(.*)',
                    svn_url)
   if match:
-    repo = '%s%s.git' % (match.group(2), match.group(3))
+    repo = '%s%s.git' % (match.group(1), match.group(2))
     return (path, GIT_HOST + 'external/%s' % repo, GIT_HOST)
 
   # Projects on googlecode.com using trunk.
