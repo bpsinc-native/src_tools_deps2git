@@ -102,8 +102,9 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
             svn_branch = converted_data[3]
           break
       else:
-        # We skip this path, this must not be required with Git.
-        continue
+        # Make all match failures fatal to catch errors early. When a match is
+        # found, we break out of the loop so the exception is not thrown.
+        raise Exception('No match found for %s' % dep_url)
 
     if options.verify:
       print >> sys.stderr, 'checking '  + git_url + '...',
