@@ -201,7 +201,7 @@ def main():
         'them.\nTo see the exact error, run `git ls-remote [repository]` where'
         '\n[repository] is the URL ending in .git (strip off the @revision\n'
         'number.) For more information, visit http://code.google.com\n'
-        '/p/chromium/wiki/UsingNewGit#Adding_new_repositories_to_DEPS.\n')
+        '/p/chromium/wiki/UsingGit#Adding_new_repositories_to_DEPS.\n')
     for dep in baddeps:
       print >> sys.stderr, ' ' + dep
     return 2
