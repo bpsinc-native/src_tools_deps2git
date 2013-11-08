@@ -106,6 +106,12 @@ def SvnUrlToGitUrl(path, svn_url):
     repo = '%s%s.git' % (match.group(2), match.group(3))
     return (path, GIT_HOST + 'external/%s' % repo, GIT_HOST)
 
+  # Subdirectories of libaddressinput
+  if re.match('^https?://libaddressinput.googlecode.com/svn/trunk', svn_url):
+    if 'libaddressinput' in path:
+      path = path[:path.index('libaddressinput')] + 'libaddressinput/src'
+    return (path, GIT_HOST + 'external/libaddressinput.git', GIT_HOST)
+
   # Projects on googlecode.com using trunk.
   match = re.match('^https?://(.*).googlecode.com/svn/trunk(.*)', svn_url)
   if match:
