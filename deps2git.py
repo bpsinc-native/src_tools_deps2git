@@ -5,6 +5,7 @@
 
 """Convert SVN based DEPS into .DEPS.git for use with NewGit."""
 
+import json
 import optparse
 import os
 import sys
@@ -163,6 +164,8 @@ def main():
                     help='top level of a git-based gclient checkout')
   parser.add_option('--verify', action='store_true',
                     help='ping each Git repo to make sure it exists')
+  parser.add_option('--json',
+                    help='path to a JSON file for machine-readable output')
   options = parser.parse_args()[0]
 
   # Get the content of the DEPS file.
@@ -194,6 +197,10 @@ def main():
     deps_os[os_dep], os_bad_deps = ConvertDepsToGit(
         deps_os[os_dep], options, deps_vars, svn_deps_vars)
     baddeps = baddeps.union(os_bad_deps)
+
+  if options.json:
+    with open(options.json, 'w') as f:
+      json.dump(list(baddeps), f, sort_keys=True, indent=2)
 
   if baddeps:
     print >> sys.stderr, ('\nUnable to resolve the following repositories. '
