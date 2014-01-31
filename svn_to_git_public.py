@@ -161,6 +161,13 @@ def SvnUrlToGitUrl(path, svn_url):
   if BLINK_TRUNK_RE.match(svn_url):
     return (path, GIT_HOST + 'chromium/blink.git', GIT_HOST)
 
+  # llvm project (and possible subdirectory) repos.
+  match = re.match('^https?://src.chromium.org/llvm-project/([^/]*)/trunk(.*)',
+                   svn_url)
+  if match:
+    repo = '%s.git' % ''.join(match.groups())
+    return (path, GIT_HOST + 'chromium/llvm-project/%s' % repo, GIT_HOST)
+
   # Minimal header-only webkit directories for iOS.
   if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
                  'WebKit/chromium/public'):
