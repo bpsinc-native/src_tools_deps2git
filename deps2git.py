@@ -26,26 +26,42 @@ def SplitScmUrl(url):
   return (scm_url, scm_rev)
 
 
+def _NormalizeGitURL(url):
+  '''Takes a git url, strips the scheme, and ensures it ends with '.git'.'''
+  separator = '://'
+  idx = url.find(separator)
+  if idx != -1:
+    url = url[idx+len(separator):]
+  if not url.endswith('.git'):
+    url += '.git'
+  return url
+
+
 def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
-                    git_host, svn_branch_name=None):
+                    git_host, svn_branch_name=None, cache_dir=None):
   """Convert a SVN revision to a Git commit id."""
   git_repo = None
   if git_url.startswith(git_host):
     git_repo = git_url.replace(git_host, '')
   else:
     raise Exception('Unknown git server %s, host %s' % (git_url, git_host))
-  if repos_path is None and workspace is None:
+  if repos_path is None and workspace is None and cache_dir is None:
     # We're running without a repository directory (i.e. no -r option).
     # We cannot actually find the commit id, but this mode is useful
     # just for testing the URL mappings.  Produce an output file that
     # can't actually be used, but can be eyeballed for correct URLs.
     return 'xxx-r%s' % svn_rev
+  mirror = False
   if repos_path:
     git_repo_path = os.path.join(repos_path, git_repo)
     mirror = True
+  elif cache_dir:
+    git_repo_path = os.path.join(
+        cache_dir,
+        _NormalizeGitURL(git_url).replace('-', '--').replace('/', '-'))
+    mirror = 'bare'
   else:
     git_repo_path = os.path.join(workspace, dep_path)
-    mirror = False
   if not os.path.exists(git_repo_path):
     git_tools.Clone(git_url, git_repo_path, mirror)
 
@@ -146,7 +162,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
         else:
           git_hash = '@%s' % SvnRevToGitHash(
               dep_rev, git_url, options.repos, options.workspace, path,
-              git_host, svn_branch)
+              git_host, svn_branch, options.cache_dir)
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit' and dep_rev:
@@ -173,6 +189,8 @@ def main():
                     help='path to the directory holding all the Git repos')
   parser.add_option('-w', '--workspace', metavar='PATH',
                     help='top level of a git-based gclient checkout')
+  parser.add_option('-c', '--cache_dir',
+                     help='top level of a gclient git cache diretory.')
   parser.add_option('--verify', action='store_true',
                     help='ping each Git repo to make sure it exists')
   parser.add_option('--json',
@@ -190,6 +208,8 @@ def main():
     options.extra_rules = os.path.join(
         os.path.abspath(os.path.dirname(__file__)),
         'svn_to_git_%s.py' % options.type)
+  if options.cache_dir and options.repos:
+    parser.error('Can\'t specify both cache_dir and repos at the same time.')
 
   if options.extra_rules and not os.path.exists(options.extra_rules):
     raise Exception('Can\'t locate rules file "%s".' % options.extra_rules)

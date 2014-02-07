@@ -18,7 +18,7 @@ VERBOSE = False
 TIMEOUT = 20 * 60
 
 
-def GetStatusOutput(cmd, cwd=None):
+def GetStatusOutput(cmd, cwd=None, interactive=False):
   """Return (status, output) of executing cmd in a shell."""
   if VERBOSE:
     print ''
@@ -30,9 +30,17 @@ def GetStatusOutput(cmd, cwd=None):
     thr.stdout = ''
     thr.stderr = '<timeout>'
     try:
-      proc = subprocess.Popen(cmd, shell=True, universal_newlines=True, cwd=cwd,
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-      (stdout, _) = proc.communicate()
+      if interactive:
+        proc = subprocess.Popen(cmd, shell=True, universal_newlines=True,
+                                cwd=cwd, stdout=sys.stdout,
+                                stderr=subprocess.STDOUT)
+        stdout = ''
+        proc.wait()
+      else:
+        proc = subprocess.Popen(cmd, shell=True, universal_newlines=True,
+                                cwd=cwd, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
+        (stdout, _) = proc.communicate()
     except Exception, e:
       thr.status = -1
       thr.stdout = ''
@@ -56,7 +64,7 @@ def GetStatusOutput(cmd, cwd=None):
   return (thr.status, thr.stdout)
 
 
-def Git(git_repo, command, is_mirror=False):
+def Git(git_repo, command, is_mirror=False, interactive=False):
   """Execute a git command within a local git repo."""
   if is_mirror:
     cmd = 'git --git-dir=%s %s' % (git_repo, command)
@@ -64,7 +72,7 @@ def Git(git_repo, command, is_mirror=False):
   else:
     cmd = 'git %s' % command
     cwd = git_repo
-  (status, output) = GetStatusOutput(cmd, cwd)
+  (status, output) = GetStatusOutput(cmd, cwd, interactive)
   if status != 0:
     raise Exception('Failed to run %s. error %d. output %s' % (cmd, status,
                                                                output))
@@ -73,10 +81,19 @@ def Git(git_repo, command, is_mirror=False):
 
 def Clone(git_url, git_repo, is_mirror):
   """Clone a repository."""
-  cmd = 'clone%s %s %s' % (' --mirror' if is_mirror else '', git_url, git_repo)
+  cmd = 'clone'
+  if is_mirror == 'bare':
+    cmd += ' --bare --progress '
+  elif is_mirror:
+    cmd += ' --mirror '
+  cmd += '%s %s'  % (git_url, git_repo)
+
   if not is_mirror and not os.path.exists(git_repo):
     os.makedirs(git_repo)
-  return Git(git_repo, cmd, is_mirror)
+  # Because this step can take a looooong time, we want it to be interactive
+  # so that git will print out status messages as it clones so that buildbot
+  # doesn't kill the process.
+  return Git(git_repo, cmd, is_mirror, True)
 
 
 def Fetch(git_repo, git_url, is_mirror):
