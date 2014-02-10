@@ -15,7 +15,7 @@ import threading
 VERBOSE = False
 
 # The longest any single subprocess will be allowed to run.
-TIMEOUT = 20 * 60
+TIMEOUT = 40 * 60
 
 
 def GetStatusOutput(cmd, cwd=None, interactive=False):
