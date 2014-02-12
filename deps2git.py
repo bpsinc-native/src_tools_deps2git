@@ -249,7 +249,8 @@ def main():
   if options.cache_dir and options.repos:
     parser.error('Can\'t specify both cache_dir and repos at the same time.')
 
-  options.cache_dir = os.path.abspath(options.cache_dir)
+  if options.cache_dir:
+    options.cache_dir = os.path.abspath(options.cache_dir)
 
   if options.extra_rules and not os.path.exists(options.extra_rules):
     raise Exception('Can\'t locate rules file "%s".' % options.extra_rules)
