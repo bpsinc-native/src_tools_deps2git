@@ -9,7 +9,6 @@ import collections
 import json
 import optparse
 import os
-import shutil
 import sys
 import time
 
@@ -88,7 +87,7 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     # The bare repository clone probably got interrupted. Lets blow away the
     # bare repo and reclone.
     if mirror == 'bare':
-      shutil.rmtree(git_repo_path)
+      deps_utils.RemoveDirectory(git_repo_path)
       git_tools.Clone(git_url, git_repo_path, mirror)
       return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
     raise
