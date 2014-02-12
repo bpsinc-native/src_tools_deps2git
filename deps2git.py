@@ -146,6 +146,8 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
 
   # Lets pre-cache all of the git repos now if we have cache_dir turned on.
   if options.cache_dir:
+    if not os.path.isdir(options.cache_dir):
+      os.makedirs(options.cache_dir)
     pool = ThreadPool()
     for git_url, _, _, _, _, _ in deps_to_process.itervalues():
       git_repo_path = os.path.join(
@@ -246,6 +248,8 @@ def main():
         'svn_to_git_%s.py' % options.type)
   if options.cache_dir and options.repos:
     parser.error('Can\'t specify both cache_dir and repos at the same time.')
+
+  options.cache_dir = os.path.abspath(options.cache_dir)
 
   if options.extra_rules and not os.path.exists(options.extra_rules):
     raise Exception('Can\'t locate rules file "%s".' % options.extra_rules)
