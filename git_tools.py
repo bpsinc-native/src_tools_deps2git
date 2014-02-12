@@ -17,6 +17,9 @@ VERBOSE = False
 # The longest any single subprocess will be allowed to run.
 TIMEOUT = 40 * 60
 
+class AbnormalExit(Exception):
+  pass
+
 
 def GetStatusOutput(cmd, cwd=None, interactive=False):
   """Return (status, output) of executing cmd in a shell."""
@@ -73,7 +76,10 @@ def Git(git_repo, command, is_mirror=False, interactive=False):
     cmd = 'git %s' % command
     cwd = git_repo
   (status, output) = GetStatusOutput(cmd, cwd, interactive)
-  if status != 0:
+  if status == 128:
+    raise AbnormalExit('Failed to run %s. Exited Abnormally. output %s' %
+                       (cmd, output))
+  elif status != 0:
     raise Exception('Failed to run %s. error %d. output %s' % (cmd, status,
                                                                output))
   return (status, output)

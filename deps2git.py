@@ -5,11 +5,15 @@
 
 """Convert SVN based DEPS into .DEPS.git for use with NewGit."""
 
+import collections
 import json
 import optparse
 import os
+import shutil
 import sys
 import time
+
+from multiprocessing.pool import ThreadPool
 
 import deps_utils
 import git_tools
@@ -78,8 +82,16 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     else:
       refspec = 'refs/remotes/origin/master'
 
-  return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
-
+  try:
+    return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
+  except git_tools.AbnormalExit:
+    # The bare repository clone probably got interrupted. Lets blow away the
+    # bare repo and reclone.
+    if mirror == 'bare':
+      shutil.rmtree(git_repo_path)
+      git_tools.Clone(git_url, git_repo_path, mirror)
+      return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
+    raise
 
 def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
@@ -98,8 +110,10 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
   for svn_to_git_obj in reversed(svn_to_git_objs):
     deps_overrides.update(getattr(svn_to_git_obj, 'DEPS_OVERRIDES', {}))
 
-  for dep in deps:
-    if not deps[dep]:  # dep is 'None' and emitted to exclude the dep
+  # Populate our deps list.
+  deps_to_process = {}
+  for dep, dep_url in deps.iteritems():
+    if not dep_url:  # dep is 'None' and emitted to exclude the dep
       new_deps[dep] = None
       continue
 
@@ -109,6 +123,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
     path = dep
     git_url = dep_url
     svn_branch = None
+    git_host = dep_url
 
     if not dep_url.endswith('.git'):
       # Convert this SVN URL to a Git URL.
@@ -124,6 +139,27 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
         # found, we break out of the loop so the exception is not thrown.
         raise Exception('No match found for %s' % dep_url)
 
+    Job = collections.namedtuple('Job', ['git_url', 'dep_url', 'path',
+                                         'git_host', 'dep_rev', 'svn_branch'])
+    deps_to_process[dep] = Job(
+        git_url, dep_url, path, git_host, dep_rev, svn_branch)
+
+  # Lets pre-cache all of the git repos now if we have cache_dir turned on.
+  if options.cache_dir:
+    pool = ThreadPool()
+    for git_url, _, _, _, _, _ in deps_to_process.itervalues():
+      git_repo_path = os.path.join(
+          options.cache_dir,
+          _NormalizeGitURL(git_url).replace('-', '--').replace('/', '-'))
+      print 'Caching %s' % git_url
+      if not os.path.exists(git_repo_path):
+        pool.apply_async(git_tools.Clone, (git_url, git_repo_path, 'bare'))
+    pool.close()
+    pool.join()
+
+
+  for dep, items in deps_to_process.iteritems():
+    git_url, dep_url, path, git_host, dep_rev, svn_branch = items
     if options.verify:
       delay = 0.5
       success = False
