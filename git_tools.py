@@ -76,7 +76,8 @@ def Git(git_repo, command, is_mirror=False, interactive=False):
     cmd = 'git %s' % command
     cwd = git_repo
   (status, output) = GetStatusOutput(cmd, cwd, interactive)
-  if status == 128:
+  # For Abnormal Exit, Windows returns -1, Posix returns 128.
+  if status in [-1, 128]:
     raise AbnormalExit('Failed to run %s. Exited Abnormally. output %s' %
                        (cmd, output))
   elif status != 0:
