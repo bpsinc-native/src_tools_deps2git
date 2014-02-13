@@ -9,6 +9,7 @@ import collections
 import json
 import optparse
 import os
+import Queue
 import sys
 import time
 
@@ -148,14 +149,29 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
     if not os.path.isdir(options.cache_dir):
       os.makedirs(options.cache_dir)
     pool = ThreadPool()
+    output_queue = Queue.Queue()
+    num_threads = 0
     for git_url, _, _, _, _, _ in deps_to_process.itervalues():
       git_repo_path = os.path.join(
           options.cache_dir,
           _NormalizeGitURL(git_url).replace('-', '--').replace('/', '-'))
-      print 'Caching %s' % git_url
       if not os.path.exists(git_repo_path):
-        pool.apply_async(git_tools.Clone, (git_url, git_repo_path, 'bare'))
+        print 'Caching %s' % git_url
+        num_threads += 1
+        pool.apply_async(git_tools.Clone,
+                         (git_url, git_repo_path, 'bare', output_queue))
     pool.close()
+
+    # Stream stdout line by line.
+    while num_threads > 0:
+      try:
+        line = output_queue.get(block=True, timeout=1)
+      except Queue.Empty:
+        continue
+      if line is None:
+        num_threads -= 1
+      else:
+        print line
     pool.join()
 
 

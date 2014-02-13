@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 
+import cStringIO
 import os
 import re
 import subprocess
@@ -21,7 +22,36 @@ class AbnormalExit(Exception):
   pass
 
 
-def GetStatusOutput(cmd, cwd=None, interactive=False):
+class StdioBuffer(object):
+  def __init__(self, name, out_queue):
+    self.closed = False
+    self.line_buffer = cStringIO.StringIO()
+    self.name = name
+    self.out_q = out_queue
+
+  def write(self, msg):
+    """Write into the buffer.  Only one thread should call write() at a time."""
+    assert not self.closed
+    self.line_buffer.write(msg)
+    # We can use '\n' instead of os.linesep because universal newlines is
+    # set to true below.
+    if '\n' in msg:
+      # We can assert that lines is at least 2 items if '\n' is present.
+      lines = self.line_buffer.getvalue().split('\n')
+      for line in lines[:-1]:
+        self.out_q.put('%s> %s' % (self.name, line))
+      self.line_buffer.close()
+      self.line_buffer = cStringIO.StringIO()
+      self.line_buffer.write(lines[-1])
+
+  def close(self):
+    # Empty out the line buffer.
+    self.write('\n')
+    self.out_q.put(None)
+    self.closed = True
+
+
+def GetStatusOutput(cmd, cwd=None, out_buffer=None):
   """Return (status, output) of executing cmd in a shell."""
   if VERBOSE:
     print ''
@@ -33,12 +63,18 @@ def GetStatusOutput(cmd, cwd=None, interactive=False):
     thr.stdout = ''
     thr.stderr = '<timeout>'
     try:
-      if interactive:
+      if out_buffer:
         proc = subprocess.Popen(cmd, shell=True, universal_newlines=True,
-                                cwd=cwd, stdout=sys.stdout,
+                                cwd=cwd, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
+        while True:
+          buf = proc.stdout.read(1)
+          if not buf:
+            break
+          out_buffer.write(buf)
         stdout = ''
         proc.wait()
+        out_buffer.close()
       else:
         proc = subprocess.Popen(cmd, shell=True, universal_newlines=True,
                                 cwd=cwd, stdout=subprocess.PIPE,
@@ -67,7 +103,7 @@ def GetStatusOutput(cmd, cwd=None, interactive=False):
   return (thr.status, thr.stdout)
 
 
-def Git(git_repo, command, is_mirror=False, interactive=False):
+def Git(git_repo, command, is_mirror=False, out_buffer=None):
   """Execute a git command within a local git repo."""
   if is_mirror:
     cmd = 'git --git-dir=%s %s' % (git_repo, command)
@@ -75,7 +111,7 @@ def Git(git_repo, command, is_mirror=False, interactive=False):
   else:
     cmd = 'git %s' % command
     cwd = git_repo
-  (status, output) = GetStatusOutput(cmd, cwd, interactive)
+  (status, output) = GetStatusOutput(cmd, cwd, out_buffer)
   # For Abnormal Exit, Windows returns -1, Posix returns 128.
   if status in [-1, 128]:
     raise AbnormalExit('Failed to run %s. Exited Abnormally. output %s' %
@@ -86,7 +122,7 @@ def Git(git_repo, command, is_mirror=False, interactive=False):
   return (status, output)
 
 
-def Clone(git_url, git_repo, is_mirror):
+def Clone(git_url, git_repo, is_mirror, out_queue=None):
   """Clone a repository."""
   cmd = 'clone'
   if is_mirror == 'bare':
@@ -100,7 +136,9 @@ def Clone(git_url, git_repo, is_mirror):
   # Because this step can take a looooong time, we want it to be interactive
   # so that git will print out status messages as it clones so that buildbot
   # doesn't kill the process.
-  return Git(git_repo, cmd, is_mirror, True)
+  repo_name = git_url.split('/')[-1]
+  buf = StdioBuffer(repo_name, out_queue)
+  return Git(git_repo, cmd, is_mirror, buf)
 
 
 def Fetch(git_repo, git_url, is_mirror):
