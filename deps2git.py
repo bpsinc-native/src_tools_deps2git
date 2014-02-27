@@ -30,17 +30,6 @@ def SplitScmUrl(url):
   return (scm_url, scm_rev)
 
 
-def _NormalizeGitURL(url):
-  '''Takes a git url, strips the scheme, and ensures it ends with '.git'.'''
-  separator = '://'
-  idx = url.find(separator)
-  if idx != -1:
-    url = url[idx+len(separator):]
-  if not url.endswith('.git'):
-    url += '.git'
-  return url
-
-
 def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
                     git_host, svn_branch_name=None, cache_dir=None):
   """Convert a SVN revision to a Git commit id."""
@@ -60,14 +49,13 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     git_repo_path = os.path.join(repos_path, git_repo)
     mirror = True
   elif cache_dir:
-    git_repo_path = os.path.join(
-        cache_dir,
-        _NormalizeGitURL(git_url).replace('-', '--').replace('/', '-'))
+    git_repo_path = None
     mirror = 'bare'
   else:
     git_repo_path = os.path.join(workspace, dep_path)
-  if not os.path.exists(git_repo_path):
-    git_tools.Clone(git_url, git_repo_path, mirror)
+  if git_repo_path is None or not os.path.exists(git_repo_path):
+    git_tools.Clone(git_url, git_repo_path, mirror, cache_dir=cache_dir)
+    git_repo_path = git_tools.GetCacheRepoDir(git_url, cache_dir)
 
   if svn_branch_name:
     # svn branches are mirrored with:
@@ -82,16 +70,7 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     else:
       refspec = 'refs/remotes/origin/master'
 
-  try:
-    return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
-  except git_tools.AbnormalExit:
-    # The bare repository clone probably got interrupted. Lets blow away the
-    # bare repo and reclone.
-    if mirror == 'bare':
-      deps_utils.RemoveDirectory(git_repo_path)
-      git_tools.Clone(git_url, git_repo_path, mirror)
-      return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
-    raise
+  return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
 
 def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
@@ -148,18 +127,15 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
   if options.cache_dir:
     if not os.path.isdir(options.cache_dir):
       os.makedirs(options.cache_dir)
-    pool = ThreadPool()
+    pool = ThreadPool(processes=len(deps_to_process))
     output_queue = Queue.Queue()
     num_threads = 0
     for git_url, _, _, _, _, _ in deps_to_process.itervalues():
-      git_repo_path = os.path.join(
-          options.cache_dir,
-          _NormalizeGitURL(git_url).replace('-', '--').replace('/', '-'))
-      if not os.path.exists(git_repo_path):
-        print 'Caching %s' % git_url
-        num_threads += 1
-        pool.apply_async(git_tools.Clone,
-                         (git_url, git_repo_path, 'bare', output_queue))
+      print 'Populating cache for %s' % git_url
+      num_threads += 1
+      pool.apply_async(git_tools.Clone, (git_url, None, 'bare',
+                                         output_queue, options.cache_dir,
+                                         options.shallow))
     pool.close()
 
     # Stream stdout line by line.
@@ -243,7 +219,9 @@ def main():
   parser.add_option('-w', '--workspace', metavar='PATH',
                     help='top level of a git-based gclient checkout')
   parser.add_option('-c', '--cache_dir',
-                     help='top level of a gclient git cache diretory.')
+                    help='top level of a gclient git cache diretory.')
+  parser.add_option('-s', '--shallow', action='store_true',
+                    help='Use shallow checkouts when populating cache dirs.')
   parser.add_option('--verify', action='store_true',
                     help='ping each Git repo to make sure it exists')
   parser.add_option('--json',
@@ -263,6 +241,8 @@ def main():
         'svn_to_git_%s.py' % options.type)
   if options.cache_dir and options.repos:
     parser.error('Can\'t specify both cache_dir and repos at the same time.')
+  if options.shallow and not options.cache_dir:
+    parser.error('--shallow only supported with --cache_dir.')
 
   if options.cache_dir:
     options.cache_dir = os.path.abspath(options.cache_dir)

@@ -64,11 +64,13 @@ def GetStatusOutput(cmd, cwd=None, out_buffer=None):
     thr.stderr = '<timeout>'
     try:
       if out_buffer:
-        proc = subprocess.Popen(cmd, shell=True, universal_newlines=True,
+        proc = subprocess.Popen(cmd, shell=True,
                                 cwd=cwd, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
         while True:
           buf = proc.stdout.read(1)
+          if buf == '\r':  # We want carriage returns in Linux to be newlines.
+            buf = '\n'
           if not buf:
             break
           out_buffer.write(buf)
@@ -106,7 +108,10 @@ def GetStatusOutput(cmd, cwd=None, out_buffer=None):
 def Git(git_repo, command, is_mirror=False, out_buffer=None):
   """Execute a git command within a local git repo."""
   if is_mirror:
-    cmd = 'git --git-dir=%s %s' % (git_repo, command)
+    if git_repo:
+      cmd = 'git --git-dir=%s %s' % (git_repo, command)
+    else:
+      cmd = 'git %s' % command
     cwd = None
   else:
     cmd = 'git %s' % command
@@ -122,22 +127,44 @@ def Git(git_repo, command, is_mirror=False, out_buffer=None):
   return (status, output)
 
 
-def Clone(git_url, git_repo, is_mirror, out_queue=None):
+def GetCacheRepoDir(git_url, cache_dir):
+  """Assuming we used git_cache to populate a cache, get the repo directory."""
+  _, out = Git(None, 'cache exists --cache-dir=%s %s' % (cache_dir, git_url),
+               is_mirror=True)
+  return out.strip()
+
+
+def Clone(git_url, git_repo, is_mirror, out_queue=None, cache_dir=None,
+          shallow=False):
   """Clone a repository."""
-  cmd = 'clone'
+  repo_name = git_url.split('/')[-1]
+  if out_queue:
+    buf = StdioBuffer(repo_name, out_queue)
+  else:
+    buf = None
+
   if is_mirror == 'bare':
-    cmd += ' --bare --progress '
-  elif is_mirror:
+    if shallow:
+      if 'adobe' in git_url:
+        # --shallow by default checks out 10000 revision, but for really large
+        # repos like adobe ones, we want significantly less than 10000.
+        shallow_arg = '--depth 10 '
+      else:
+        shallow_arg = '--shallow '
+    else:
+      shallow_arg = ''
+    cmd = 'cache populate -v --cache-dir %s %s%s' % (cache_dir, shallow_arg,
+                                                     git_url)
+    return Git(None, cmd, is_mirror=True, out_buffer=buf)
+
+  cmd = 'clone'
+  if is_mirror:
     cmd += ' --mirror '
   cmd += '%s %s'  % (git_url, git_repo)
 
   if not is_mirror and not os.path.exists(git_repo):
     os.makedirs(git_repo)
-  # Because this step can take a looooong time, we want it to be interactive
-  # so that git will print out status messages as it clones so that buildbot
-  # doesn't kill the process.
-  repo_name = git_url.split('/')[-1]
-  buf = StdioBuffer(repo_name, out_queue)
+
   return Git(git_repo, cmd, is_mirror, buf)
 
 
