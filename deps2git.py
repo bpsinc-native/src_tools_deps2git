@@ -139,7 +139,13 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
     pool.close()
 
     # Stream stdout line by line.
+    heartbeat_timer = time.time()
     while num_threads > 0:
+      if time.time() > heartbeat_timer + 20.0:
+        heartbeat_timer = time.time()
+        # Needed so that buildbot doesn't kill us when a repo takes forever
+        # on delta resolution.
+        print 'Main> Heartbeat ping. We are still alive!!'
       try:
         line = output_queue.get(block=True, timeout=1)
       except Queue.Empty:
