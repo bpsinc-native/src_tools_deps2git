@@ -105,6 +105,8 @@ def Varify(deps):
   deps = deps.replace(
       '\'https://git.chromium.org', 'Var(\'git_url\') + \'')
   deps = deps.replace('VAR_WEBKIT_REV\'', ' + Var(\'webkit_rev\')')
+  deps = deps.replace('VAR_ANGLE_REVISION\'',
+                      '\' + \'@\' + Var(\'angle_revision\')')
 
   # Try to replace all instances of form "marker_prefix_<name>'" with
   # "' + Var('<name>')".  If there are no matches, nothing is done.

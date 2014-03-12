@@ -202,6 +202,14 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
       deps_vars['webkit_rev'] = git_hash
       git_hash = 'VAR_WEBKIT_REV'
 
+    # Hack to preserve the angle_revision variable in .DEPS.git.
+    # This will go away as soon as deps2git does.
+    if dep == 'src/third_party/angle' and git_hash:
+      # Cut the leading '@' so this variable has the same semantics in
+      # DEPS and .DEPS.git.
+      deps_vars['angle_revision'] = git_hash[1:]
+      git_hash = 'VAR_ANGLE_REVISION'
+
     # Add this Git dep to the new deps.
     new_deps[path] = '%s%s' % (git_url, git_hash)
 
