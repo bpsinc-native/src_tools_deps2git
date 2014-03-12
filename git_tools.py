@@ -159,13 +159,13 @@ def Clone(git_url, git_repo, is_mirror, out_queue=None, cache_dir=None,
 
   cmd = 'clone'
   if is_mirror:
-    cmd += ' --mirror '
-  cmd += '%s %s'  % (git_url, git_repo)
+    cmd += ' --mirror'
+  cmd += ' %s %s'  % (git_url, git_repo)
 
   if not is_mirror and not os.path.exists(git_repo):
     os.makedirs(git_repo)
 
-  return Git(git_repo, cmd, is_mirror, buf)
+  return Git(None, cmd, is_mirror, buf)
 
 
 def Fetch(git_repo, git_url, is_mirror):

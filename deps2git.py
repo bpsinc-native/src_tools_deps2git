@@ -10,6 +10,8 @@ import json
 import optparse
 import os
 import Queue
+import shutil
+import subprocess
 import sys
 import time
 
@@ -19,6 +21,20 @@ import deps_utils
 import git_tools
 import svn_to_git_public
 
+
+# This is copied from depot_tools/gclient.py
+DEPS_OS_CHOICES = {
+    "win32": "win",
+    "win": "win",
+    "cygwin": "win",
+    "darwin": "mac",
+    "mac": "mac",
+    "unix": "unix",
+    "linux": "unix",
+    "linux2": "unix",
+    "linux3": "unix",
+    "android": "android",
+}
 
 def SplitScmUrl(url):
   """Given a repository, return a set containing the URL and the revision."""
@@ -44,18 +60,31 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     # just for testing the URL mappings.  Produce an output file that
     # can't actually be used, but can be eyeballed for correct URLs.
     return 'xxx-r%s' % svn_rev
-  mirror = False
   if repos_path:
-    git_repo_path = os.path.join(repos_path, git_repo)
     mirror = True
+    git_repo_path = os.path.join(repos_path, git_repo)
+    if not os.path.exists(git_repo_path) or not os.listdir(git_repo_path):
+      git_tools.Clone(git_url, git_repo_path, mirror)
   elif cache_dir:
-    git_repo_path = None
     mirror = 'bare'
-  else:
-    git_repo_path = os.path.join(workspace, dep_path)
-  if git_repo_path is None or not os.path.exists(git_repo_path):
-    git_tools.Clone(git_url, git_repo_path, mirror, cache_dir=cache_dir)
+    git_tools.Clone(git_url, None, mirror, cache_dir=cache_dir)
     git_repo_path = git_tools.GetCacheRepoDir(git_url, cache_dir)
+  else:
+    mirror = False
+    git_repo_path = os.path.join(workspace, dep_path)
+    if (os.path.exists(git_repo_path) and
+        not os.path.exists(os.path.join(git_repo_path, '.git'))):
+      # shutil.rmtree is unreliable on windows
+      if sys.platform == 'win32':
+        for _ in xrange(3):
+          if not subprocess.call(['cmd.exe', '/c', 'rd', '/q', '/s',
+                                  os.path.normcase(git_repo_path)]):
+            break
+          time.sleep(3)
+      else:
+        shutil.rmtree(git_repo_path)
+    if not os.path.exists(git_repo_path):
+      git_tools.Clone(git_url, git_repo_path, mirror)
 
   if svn_branch_name:
     # svn branches are mirrored with:
@@ -70,24 +99,17 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     else:
       refspec = 'refs/remotes/origin/master'
 
-  return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
+  try:
+    return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
+  except Exception:
+    print >> sys.stderr, '%s <-> ERROR' % git_repo_path
+    raise
 
-def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars):
+def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
+                     deps_overrides):
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
   new_deps = {}
   bad_git_urls = set([])
-
-  svn_to_git_objs = [svn_to_git_public]
-  if options.extra_rules:
-    rules_dir, rules_file = os.path.split(options.extra_rules)
-    rules_file_base = os.path.splitext(rules_file)[0]
-    sys.path.insert(0, rules_dir)
-    svn_to_git_objs.insert(0, __import__(rules_file_base))
-
-  deps_overrides = {}
-  # Allow extra_rules file to override rules in public file.
-  for svn_to_git_obj in reversed(svn_to_git_objs):
-    deps_overrides.update(getattr(svn_to_git_obj, 'DEPS_OVERRIDES', {}))
 
   # Populate our deps list.
   deps_to_process = {}
@@ -270,11 +292,48 @@ def main():
       'webkit_url': git_url + '/chromium/blink.git',
   }
 
+  # Find and load svn_to_git_* modules that handle the URL mapping.
+  svn_to_git_objs = [svn_to_git_public]
+  deps_overrides = getattr(svn_to_git_public, 'DEPS_OVERRIDES', {}).copy()
+  if options.extra_rules:
+    rules_dir, rules_file = os.path.split(options.extra_rules)
+    rules_file_base = os.path.splitext(rules_file)[0]
+    sys.path.insert(0, rules_dir)
+    svn_to_git_mod = __import__(rules_file_base)
+    svn_to_git_objs.insert(0, svn_to_git_mod)
+    # Allow extra_rules file to override rules in svn_to_git_public.
+    deps_overrides.update(getattr(svn_to_git_mod, 'DEPS_OVERRIDES', {}))
+
+  # If a workspace parameter is given, and a .gclient file is present, limit
+  # DEPS conversion to only the repositories that are actually used in this
+  # checkout.  Also, if a cache dir is specified in .gclient, honor it.
+  if options.workspace and os.path.exists(
+      os.path.join(options.workspace, '.gclient')):
+    gclient_file = os.path.join(options.workspace, '.gclient')
+    gclient_dict = {}
+    try:
+      execfile(gclient_file, {}, gclient_dict)
+    except IOError:
+      print >> sys.stderr, 'Could not open %s' % gclient_file
+      raise
+    except SyntaxError:
+      print >> sys.stderr, 'Could not parse %s' % gclient_file
+      raise
+    target_os = gclient_dict.get('target_os', [])
+    if not target_os or not gclient_dict.get('target_os_only'):
+      target_os.append(DEPS_OS_CHOICES.get(sys.platform, 'unix'))
+    if 'all' not in target_os:
+      deps_os = dict([(k, v) for k, v in deps_os.iteritems() if k in target_os])
+    if not options.cache_dir and 'cache_dir' in gclient_dict:
+      options.cache_dir = os.path.abspath(gclient_dict['cache_dir'])
+
   # Convert the DEPS file to Git.
-  deps, baddeps = ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars)
+  deps, baddeps = ConvertDepsToGit(
+      deps, options, deps_vars, svn_deps_vars, svn_to_git_objs, deps_overrides)
   for os_dep in deps_os:
     deps_os[os_dep], os_bad_deps = ConvertDepsToGit(
-        deps_os[os_dep], options, deps_vars, svn_deps_vars)
+        deps_os[os_dep], options, deps_vars, svn_deps_vars,
+        svn_to_git_objs, deps_overrides)
     baddeps = baddeps.union(os_bad_deps)
 
   if options.json:
