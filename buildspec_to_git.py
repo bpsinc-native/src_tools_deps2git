@@ -137,6 +137,11 @@ def SvnUrlToGitUrl(path, svn_url):
     else:
       return (path, GIT_HOST + 'chromium/src.git', GIT_HOST)
 
+  # libvpx branches in the chrome branches area.
+  match = re.match('/branches/libvpx/(?P<branch>[^/]+)', svn_url)
+  if match:
+    return (path, GIT_HOST + 'chromium/deps/libvpx.git', GIT_HOST,
+            match.group('branch'))
 
   # Since the ffmpeg overrides are gone, we can't use the upstream git repo
   # (which is what those overrides referenced), so use the mirror of the svn
