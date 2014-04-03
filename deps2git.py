@@ -200,7 +200,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
     # Get the Git hash based off the SVN rev.
     git_hash = ''
     if dep_rev != 'HEAD':
-      if dep in deps_overrides:
+      if dep in deps_overrides and deps_overrides[dep]:
         # Transfer any required variables over from SVN DEPS.
         if not deps_overrides[dep] in svn_deps_vars:
           raise Exception('Missing DEPS variable: %s' % deps_overrides[dep])
@@ -326,6 +326,12 @@ def main():
       deps_os = dict([(k, v) for k, v in deps_os.iteritems() if k in target_os])
     if not options.cache_dir and 'cache_dir' in gclient_dict:
       options.cache_dir = os.path.abspath(gclient_dict['cache_dir'])
+
+  # Do general pre-processing of the DEPS data.
+  for svn_git_converter in svn_to_git_objs:
+    if hasattr(svn_git_converter, 'CleanDeps'):
+      svn_git_converter.CleanDeps(deps, deps_os, include_rules,
+                                  skip_child_includes, hooks, svn_deps_vars)
 
   # Convert the DEPS file to Git.
   deps, baddeps = ConvertDepsToGit(

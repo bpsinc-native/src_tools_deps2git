@@ -256,8 +256,15 @@ def _SearchImpl(git_repo, svn_rev, is_mirror, refspec, fetch_url, regex):
   def _FindRevForCommitish(git_repo, commitish, is_mirror):
     _, output = Git(git_repo, 'cat-file commit %s' % commitish, is_mirror)
     match = re.match(r'git-svn-id: [^\s@]+@(\d+) \S+$', output.splitlines()[-1])
-    assert match, 'no match on %s' % output
-    return int(match.group(1))
+    if match:
+      return int(match.group(1))
+    else:
+      # The last commit isn't from svn, but maybe the repo was converted to pure
+      # git at some point, so the last svn commit is somewhere farther back.
+      _, output = Git(
+          git_repo, ('log -E --grep="^git-svn-id: [^@]*@[0-9]* [A-Za-z0-9-]*$" '
+                     '-1 --format="%%H" %s') % commitish, is_mirror)
+      assert output, 'no match on %s' % commitish
 
   # Check if svn_rev is newer than the current refspec revision.
   found_rev = _FindRevForCommitish(git_repo, refspec, is_mirror)
@@ -274,7 +281,8 @@ def _SearchImpl(git_repo, svn_rev, is_mirror, refspec, fetch_url, regex):
       is_mirror)
   output = output.strip()
   if not re.match('^[0-9a-fA-F]{40}$', output):
-    raise SearchError('Cannot find revision %s in %s' % (svn_rev, git_repo))
+    raise SearchError('Cannot find revision %s in %s:%s' % (svn_rev, git_repo,
+                                                            refspec))
 
   # Check if it actually matched the svn_rev that was requested.
   found_rev = _FindRevForCommitish(git_repo, output, is_mirror)

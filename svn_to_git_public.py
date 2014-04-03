@@ -84,6 +84,13 @@ def SvnUrlToGitUrl(path, svn_url):
   if re.match('^https?://webrtc.googlecode.com/svn/stable/src$', svn_url):
     return (path, GIT_HOST + 'external/webrtc/stable/src.git', GIT_HOST)
 
+  # webrtc 'trunk/src' mirror was created without 'trunk' in the name, unlike
+  # the other ones which are matched next.
+  match = re.match('^https?://webrtc.googlecode.com/svn/trunk/src', svn_url)
+  if match:
+    return (path, GIT_HOST + 'external/webrtc/src.git', GIT_HOST)
+
+  # webrtc 'trunk' mappings for everything but 'trunk/src'.
   match = re.match('^https?://webrtc.googlecode.com/svn/trunk/(.*)', svn_url)
   if match:
     repo = '%s.git' % match.group(1)
@@ -138,7 +145,7 @@ def SvnUrlToGitUrl(path, svn_url):
   if match:
     repo = '%s%s.git' % (match.group(1), match.group(3))
     branch_name = match.group(2)
-    return (path, GIT_HOST + 'external/%s' % repo, branch_name, GIT_HOST)
+    return (path, GIT_HOST + 'external/%s' % repo, GIT_HOST, branch_name)
 
   # Projects that are subdirectories of the native_client repository.
   match = re.match('^https?://src.chromium.org/native_client/trunk/(.*)',
@@ -168,14 +175,22 @@ def SvnUrlToGitUrl(path, svn_url):
     repo = '%s.git' % ''.join(match.groups())
     return (path, GIT_HOST + 'chromium/llvm-project/%s' % repo, GIT_HOST)
 
-  # Minimal header-only webkit directories for iOS.
-  if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
-                 'WebKit/chromium/public'):
+  # Minimal header-only webkit directories for iOS. At some point after the
+  # transition to the blink repo, these were replaced by the
+  # BLINK_TRUNK_PUBLIC_RE entries above.
+  if svn_url in ['http://svn.webkit.org/repository/webkit/trunk/Source/'
+                 'WebKit/chromium/public',
+                 'http://src.chromium.org/blink/trunk/Source/'
+                 'WebKit/chromium/public'
+                 ]:
     return (path,
             GIT_HOST + 'external/WebKit/Source/WebKit/chromium/public.git',
             GIT_HOST)
-  if svn_url == ('http://svn.webkit.org/repository/webkit/trunk/Source/' +
-                 'Platform/chromium/public'):
+  if svn_url in ['http://svn.webkit.org/repository/webkit/trunk/Source/'
+                 'Platform/chromium/public',
+                 'http://src.chromium.org/blink/trunk/Source/'
+                 'Platform/chromium/public'
+                 ]:
     return (path,
             GIT_HOST + 'external/WebKit/Source/Platform/chromium/public.git',
             GIT_HOST)
