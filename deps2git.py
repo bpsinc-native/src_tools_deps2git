@@ -110,6 +110,9 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
   new_deps = {}
   bad_git_urls = set([])
+  bad_dep_urls = []
+  bad_override = []
+  bad_git_hash = []
 
   # Populate our deps list.
   deps_to_process = {}
@@ -138,6 +141,9 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
       else:
         # Make all match failures fatal to catch errors early. When a match is
         # found, we break out of the loop so the exception is not thrown.
+        if options.no_fail_fast:
+          bad_dep_urls.append(dep_url)
+          continue
         raise Exception('No match found for %s' % dep_url)
 
     Job = collections.namedtuple('Job', ['git_url', 'dep_url', 'path',
@@ -203,6 +209,9 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
       if dep in deps_overrides and deps_overrides[dep]:
         # Transfer any required variables over from SVN DEPS.
         if not deps_overrides[dep] in svn_deps_vars:
+          if options.no_fail_fast:
+            bad_override.append(deps_overrides[dep])
+            continue
           raise Exception('Missing DEPS variable: %s' % deps_overrides[dep])
         deps_vars[deps_overrides[dep]] = (
             '@' + svn_deps_vars[deps_overrides[dep]].lstrip('@'))
@@ -215,9 +224,15 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
         if dep_url.endswith('.git'):
           git_hash = '@%s' % dep_rev
         else:
-          git_hash = '@%s' % SvnRevToGitHash(
-              dep_rev, git_url, options.repos, options.workspace, path,
-              git_host, svn_branch, options.cache_dir)
+          try:
+            git_hash = '@%s' % SvnRevToGitHash(
+                dep_rev, git_url, options.repos, options.workspace, path,
+                git_host, svn_branch, options.cache_dir)
+          except Exception as e:
+            if options.no_fail_fast:
+              bad_git_hash.append(e)
+              continue
+            raise
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit' and dep_rev:
@@ -235,7 +250,7 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
     # Add this Git dep to the new deps.
     new_deps[path] = '%s%s' % (git_url, git_hash)
 
-  return new_deps, bad_git_urls
+  return new_deps, bad_git_urls, bad_dep_urls, bad_override, bad_git_hash
 
 
 def main():
@@ -256,6 +271,9 @@ def main():
                     help='top level of a gclient git cache diretory.')
   parser.add_option('-s', '--shallow', action='store_true',
                     help='Use shallow checkouts when populating cache dirs.')
+  parser.add_option('--no_fail_fast', action='store_true',
+                    help='Try to process the whole DEPS, rather than failing '
+                    'on the first bad entry.')
   parser.add_option('--verify', action='store_true',
                     help='ping each Git repo to make sure it exists')
   parser.add_option('--json',
@@ -334,13 +352,16 @@ def main():
                                   skip_child_includes, hooks, svn_deps_vars)
 
   # Convert the DEPS file to Git.
-  deps, baddeps = ConvertDepsToGit(
+  deps, baddeps, badmaps, badvars, badhashes = ConvertDepsToGit(
       deps, options, deps_vars, svn_deps_vars, svn_to_git_objs, deps_overrides)
   for os_dep in deps_os:
-    deps_os[os_dep], os_bad_deps = ConvertDepsToGit(
-        deps_os[os_dep], options, deps_vars, svn_deps_vars,
-        svn_to_git_objs, deps_overrides)
-    baddeps = baddeps.union(os_bad_deps)
+    result = ConvertDepsToGit(deps_os[os_dep], options, deps_vars,
+                              svn_deps_vars, svn_to_git_objs, deps_overrides)
+    deps_os[os_dep] = result[0]
+    baddeps = baddeps.union(result[1])
+    badmaps.extend(result[2])
+    badvars.extend(result[3])
+    badhashes.extend(result[4])
 
   if options.json:
     with open(options.json, 'w') as f:
@@ -355,12 +376,26 @@ def main():
         '/p/chromium/wiki/UsingGit#Adding_new_repositories_to_DEPS.\n')
     for dep in baddeps:
       print >> sys.stderr, ' ' + dep
+  if badmaps:
+    print >> sys.stderr, '\nNo mappings found for the following urls:\n'
+    for bad in badmaps:
+      print >> sys.stderr, ' ' + bad
+  if badvars:
+    print >> sys.stderr, '\nMissing DEPS variables for overrides:\n'
+    for bad in badvars:
+      print >> sys.stderr, ' ' + bad
+  if badhashes:
+    print >> sys.stderr, '\nsvn rev to git hash failures:\n'
+    for bad in badhashes:
+      print >> sys.stderr, ' ' + str(bad)
+
+  if baddeps or badmaps or badvars or badhashes:
     return 2
-  else:
-    if options.verify:
-      print >> sys.stderr, ('\nAll referenced repositories were successfully '
-                            'resolved.')
-      return 0
+
+  if options.verify:
+    print >> sys.stderr, ('\nAll referenced repositories were successfully '
+                          'resolved.')
+    return 0
 
   # Write the DEPS file to disk.
   deps_utils.WriteDeps(options.out, deps_vars, deps, deps_os, include_rules,
