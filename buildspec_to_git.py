@@ -176,7 +176,7 @@ def SvnUrlToGitUrl(path, svn_url):
   # naming.
   # https://chromium.googlesource.com/external/skia/m25_1364/src.git
   match = re.match('^https?://skia.googlecode.com/svn/branches/'
-                   'chrome/([^/]+)/(.*)', svn_url)
+                   'chrome/([^/]+)/(?:trunk/)?(.*)', svn_url)
   if match:
     branch = match.group(1)
     repo = 'skia/%s.git' % match.group(2)
