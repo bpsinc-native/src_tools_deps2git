@@ -166,7 +166,10 @@ def SvnUrlToGitUrl(path, svn_url):
                    svn_url)
   if match:
     branch = match.group(1)
-    repo = 'webrtc/trunk/%s.git' % match.group(2)
+    if match.group(2) == 'src':
+      repo = 'webrtc/src.git'
+    else:
+      repo = 'webrtc/trunk/%s.git' % match.group(2)
     return (path, GIT_HOST + 'external/%s' % repo, GIT_HOST, branch)
 
   # Skia also split into multiple repos, and has unusual chrome-specific branch
