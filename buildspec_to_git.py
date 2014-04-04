@@ -227,3 +227,8 @@ def SvnUrlToGitUrl(path, svn_url):
     else:
       repo = GIT_HOST + 'chromium/blink.git'
     return (path, repo, GIT_HOST, match.group('branch'))
+
+  # reference builds
+  if svn_url.startswith('/trunk/deps/reference_builds/chrome'):
+    return (path, GIT_HOST + 'chromium/reference_builds/chrome.git',
+            GIT_HOST)
