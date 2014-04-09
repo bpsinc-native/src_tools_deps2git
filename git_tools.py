@@ -267,11 +267,17 @@ def _SearchImpl(git_repo, svn_rev, is_mirror, refspec, fetch_url, regex):
       assert output, 'no match on %s' % commitish
 
   # Check if svn_rev is newer than the current refspec revision.
-  found_rev = _FindRevForCommitish(git_repo, refspec, is_mirror)
-  if found_rev < int(svn_rev) and fetch_url:
+  try:
+    found_rev = _FindRevForCommitish(git_repo, refspec, is_mirror)
+  # Sometimes this fails because it's looking in a branch that hasn't been
+  # fetched from upstream yet. Let it fetch and try again.
+  except AbnormalExit:
+    found_rev = None
+  if (not found_rev or found_rev < int(svn_rev)) and fetch_url:
     if VERBOSE:
       print 'Fetching %s %s [%s < %s]' % (git_repo, refspec, found_rev, svn_rev)
     Fetch(git_repo, fetch_url, is_mirror)
+    found_rev = _FindRevForCommitish(git_repo, refspec, is_mirror)
 
   # Find the first commit matching the given git-svn-id regex.
   _, output = Git(
