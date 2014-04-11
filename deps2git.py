@@ -99,6 +99,12 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     else:
       refspec = 'refs/remotes/origin/master'
 
+  # Work-around for:
+  #   http://code.google.com/p/chromium/issues/detail?id=362222
+  if (git_url.startswith('https://chromium.googlesource.com/external/pefile')
+      and int(svn_rev) == 63):
+    return '1ceaa279daa62b71e3431e58f68be6a96dd1519a'
+
   try:
     return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
   except Exception:
