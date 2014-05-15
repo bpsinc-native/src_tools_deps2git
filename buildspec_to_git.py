@@ -19,8 +19,7 @@ DEPS_OVERRIDES = {
 
 
 # pylint: disable=W0613
-def CleanDeps(deps, deps_os, include_rules, skip_child_includes, hooks,
-              svn_deps_vars):
+def CleanDeps(deps, deps_os, include_rules, skip_child_includes, hooks):
   global webkit_git
   webkit_rev = None
   for os, deps_section in ([(None, deps)] +
