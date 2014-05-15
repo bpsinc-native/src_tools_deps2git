@@ -111,8 +111,7 @@ def SvnRevToGitHash(svn_rev, git_url, repos_path, workspace, dep_path,
     print >> sys.stderr, '%s <-> ERROR' % git_repo_path
     raise
 
-def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
-                     deps_overrides):
+def ConvertDepsToGit(deps, options, deps_vars, svn_to_git_objs):
   """Convert a 'deps' section in a DEPS file from SVN to Git."""
   new_deps = {}
   bad_git_urls = set([])
@@ -188,7 +187,6 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
         print line
     pool.join()
 
-
   for dep, items in deps_to_process.iteritems():
     git_url, dep_url, path, git_host, dep_rev, svn_branch = items
     if options.verify:
@@ -212,33 +210,20 @@ def ConvertDepsToGit(deps, options, deps_vars, svn_deps_vars, svn_to_git_objs,
     # Get the Git hash based off the SVN rev.
     git_hash = ''
     if dep_rev != 'HEAD':
-      if dep in deps_overrides and deps_overrides[dep]:
-        # Transfer any required variables over from SVN DEPS.
-        if not deps_overrides[dep] in svn_deps_vars:
-          if options.no_fail_fast:
-            bad_override.append(deps_overrides[dep])
-            continue
-          raise Exception('Missing DEPS variable: %s' % deps_overrides[dep])
-        deps_vars[deps_overrides[dep]] = (
-            '@' + svn_deps_vars[deps_overrides[dep]].lstrip('@'))
-        # Tag this variable as needing a transform by Varify() later.
-        git_hash = '%s_%s' % (deps_utils.VARIFY_MARKER_TAG_PREFIX,
-                              deps_overrides[dep])
+      # Pass-through the hash for Git repositories. Resolve the hash for
+      # subversion repositories.
+      if dep_url.endswith('.git'):
+        git_hash = '@%s' % dep_rev
       else:
-        # Pass-through the hash for Git repositories. Resolve the hash for
-        # subversion repositories.
-        if dep_url.endswith('.git'):
-          git_hash = '@%s' % dep_rev
-        else:
-          try:
-            git_hash = '@%s' % SvnRevToGitHash(
-                dep_rev, git_url, options.repos, options.workspace, path,
-                git_host, svn_branch, options.cache_dir)
-          except Exception as e:
-            if options.no_fail_fast:
-              bad_git_hash.append(e)
-              continue
-            raise
+        try:
+          git_hash = '@%s' % SvnRevToGitHash(
+              dep_rev, git_url, options.repos, options.workspace, path,
+              git_host, svn_branch, options.cache_dir)
+        except Exception as e:
+          if options.no_fail_fast:
+            bad_git_hash.append(e)
+            continue
+          raise
 
     # If this is webkit, we need to add the var for the hash.
     if dep == 'src/third_party/WebKit' and dep_rev:
@@ -287,9 +272,8 @@ def main():
   options = parser.parse_args()[0]
 
   # Get the content of the DEPS file.
-  deps_content = deps_utils.GetDepsContent(options.deps)
-  (deps, deps_os, include_rules, skip_child_includes, hooks,
-   svn_deps_vars) = deps_content
+  deps, deps_os, include_rules, skip_child_includes, hooks = (
+      deps_utils.GetDepsContent(options.deps))
 
   if options.extra_rules and options.type:
     parser.error('Can\'t specify type and extra-rules at the same time.')
@@ -318,15 +302,12 @@ def main():
 
   # Find and load svn_to_git_* modules that handle the URL mapping.
   svn_to_git_objs = [svn_to_git_public]
-  deps_overrides = getattr(svn_to_git_public, 'DEPS_OVERRIDES', {}).copy()
   if options.extra_rules:
     rules_dir, rules_file = os.path.split(options.extra_rules)
     rules_file_base = os.path.splitext(rules_file)[0]
     sys.path.insert(0, rules_dir)
     svn_to_git_mod = __import__(rules_file_base)
     svn_to_git_objs.insert(0, svn_to_git_mod)
-    # Allow extra_rules file to override rules in svn_to_git_public.
-    deps_overrides.update(getattr(svn_to_git_mod, 'DEPS_OVERRIDES', {}))
 
   # If a workspace parameter is given, and a .gclient file is present, limit
   # DEPS conversion to only the repositories that are actually used in this
@@ -355,14 +336,14 @@ def main():
   for svn_git_converter in svn_to_git_objs:
     if hasattr(svn_git_converter, 'CleanDeps'):
       svn_git_converter.CleanDeps(deps, deps_os, include_rules,
-                                  skip_child_includes, hooks, svn_deps_vars)
+                                  skip_child_includes, hooks)
 
   # Convert the DEPS file to Git.
   deps, baddeps, badmaps, badvars, badhashes = ConvertDepsToGit(
-      deps, options, deps_vars, svn_deps_vars, svn_to_git_objs, deps_overrides)
+      deps, options, deps_vars, svn_to_git_objs)
   for os_dep in deps_os:
     result = ConvertDepsToGit(deps_os[os_dep], options, deps_vars,
-                              svn_deps_vars, svn_to_git_objs, deps_overrides)
+                              svn_to_git_objs)
     deps_os[os_dep] = result[0]
     baddeps = baddeps.union(result[1])
     badmaps.extend(result[2])
