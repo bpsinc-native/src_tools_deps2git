@@ -128,7 +128,7 @@ def SvnUrlToGitUrl(path, svn_url):
     svn_url = match.group(2)
 
   # Handle the main 'src' repo which only appears in buildspecs.
-  match = re.match('/(branches/(?P<branch>[^/]+)|trunk)/src', svn_url)
+  match = re.match('/(branches/(?P<branch>[^/]+)|trunk)/src$', svn_url)
   if match:
     if match.groupdict().get('branch'):
       return (path, GIT_HOST + 'chromium/src.git', GIT_HOST,
