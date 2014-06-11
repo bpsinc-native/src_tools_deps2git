@@ -120,7 +120,7 @@ def SvnRevToGitHash(
   #   http://code.google.com/p/chromium/issues/detail?id=362222
   if (git_url.startswith('https://chromium.googlesource.com/external/pefile')
       and int(svn_rev) in (63, 141)):
-    return '1ceaa279daa62b71e3431e58f68be6a96dd1519a'
+    return '72c6ae42396cb913bcab63c15585dc3b5c3f92f1'
 
   return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
 
