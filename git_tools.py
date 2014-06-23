@@ -156,7 +156,7 @@ def PopulateCache(git_url, shallow=False):
   if shallow and 'adobe' in git_url:
     depth = 10
   mirror = git_cache.Mirror(git_url, print_func=lambda *args: None)
-  mirror.populate(depth=depth, shallow=shallow)
+  mirror.populate(depth=depth, shallow=shallow, ignore_lock=True)
   return mirror.mirror_path
 
 
