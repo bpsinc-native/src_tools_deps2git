@@ -122,6 +122,11 @@ def SvnRevToGitHash(
       and int(svn_rev) in (63, 141)):
     return '72c6ae42396cb913bcab63c15585dc3b5c3f92f1'
 
+  # Work-around for crbug.com/391270, bleeding_edge is a local branch.
+  if (git_url.startswith('https://chromium.googlesource.com/external/v8')
+      and svn_branch_name == 'bleeding_edge'):
+    refspec = 'bleeding_edge'
+
   return git_tools.Search(git_repo_path, svn_rev, mirror, refspec, git_url)
 
 
