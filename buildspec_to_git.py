@@ -228,6 +228,11 @@ def SvnUrlToGitUrl(path, svn_url):
     return (path, repo, GIT_HOST, match.group('branch'))
 
   # reference builds
-  if svn_url.startswith('/trunk/deps/reference_builds/chrome'):
-    return (path, GIT_HOST + 'chromium/reference_builds/chrome.git',
-            GIT_HOST)
+  # TODO(mmoss): This is no longer appropriate for current buildspecs, where
+  # each platform has its own repo, as defined in git_updater. Not sure if
+  # there's a way to detect and handle the current and the old repo configs at
+  # the same time. Turning off for now, since we care more about current
+  # configs.
+  #if svn_url.startswith('/trunk/deps/reference_builds/chrome'):
+  #  return (path, GIT_HOST + 'chromium/reference_builds/chrome.git',
+  #          GIT_HOST)
